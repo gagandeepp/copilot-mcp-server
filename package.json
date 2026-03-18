@@ -1,5 +1,5 @@
 {
-    "name": "copilot-mcp-server",
+    "name": "@Vensure-Devops-QA/copilot-mcp-server",
     "version": "1.0.0",
     "description": "MCP server to query GitHub Copilot usage across organizations",
     "type": "module",
@@ -10,7 +10,11 @@
     "scripts": {
         "build": "tsc",
         "start": "node dist/index.js",
-        "dev": "tsc --watch"
+        "dev": "tsc --watch",
+        "prepublishOnly": "npm run build"
+    },
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
     },
     "keywords": [
         "mcp",
