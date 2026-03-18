@@ -4,7 +4,7 @@
 			"command": "npx",
 			"args": [
 				"-y",
-				"Vensure-Devops-QA/copilot-mcp-server"
+				"@Vensure-Devops-QA/copilot-mcp-server@1.0.0"
 			],
 			"env": {
 				"GITHUB_TOKEN": "${input:github-token}"
