@@ -90,7 +90,7 @@ Make sure `GITHUB_TOKEN` is set in your shell environment.
 1. Scope the package to your org in `package.json`:
 
 ```json
-"name": "@your-org/copilot-mcp-server"
+"name": "@Vensure-Devops-QA/copilot-mcp-server"
 ```
 
 2. Add a `publishConfig` and `prepublishOnly` script:
@@ -124,7 +124,7 @@ npm install -g git+https://github.com/your-org/copilot-mcp-server.git
 Users can run the server without cloning the repo:
 
 ```bash
-npx @your-org/copilot-mcp-server
+npx @Vensure-Devops-QA/copilot-mcp-server
 ```
 
 Or reference it in their MCP client config:
@@ -132,7 +132,7 @@ Or reference it in their MCP client config:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "@your-org/copilot-mcp-server"],
+  "args": ["-y", "@Vensure-Devops-QA/copilot-mcp-server"],
   "env": {
     "GITHUB_TOKEN": "ghp_your_token_here"
   }
