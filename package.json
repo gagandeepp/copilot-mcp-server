@@ -1,5 +1,5 @@
 {
-    "name": "@Vensure-Devops-QA/copilot-mcp-server",
+    "name": "@vensure-devops-qa/copilot-mcp-server",
     "version": "1.0.0",
     "description": "MCP server to query GitHub Copilot usage across organizations",
     "type": "module",
