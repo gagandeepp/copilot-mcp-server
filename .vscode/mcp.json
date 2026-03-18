@@ -1,21 +1,21 @@
 {
-	"servers": {
-		"vensure-copilot-mcp-server": {
-			"command": "node",
-			"args": [
-				"${workspaceFolder}/dist/index.js"
-			],
-			"env": {
-				"GITHUB_TOKEN": "${input:github-token}"
-			}
-		}
-	},
-	"inputs": [
-		{
-			"id": "github-token",
-			"type": "promptString",
-			"description": "GitHub Personal Access Token with manage_billing:copilot and read:org scopes",
-			"password": true
-		}
-	]
+    "servers": {
+        "vensure-copilot-mcp-server": {
+            "command": "npx",
+            "args": [
+                "@vensure-devops-qa/copilot-mcp-server"
+            ],
+            "env": {
+                "GITHUB_TOKEN": "${input:github-token}"
+            }
+        }
+    },
+    "inputs": [
+        {
+            "id": "github-token",
+            "type": "promptString",
+            "description": "GitHub Personal Access Token with manage_billing:copilot and read:org scopes",
+            "password": true
+        }
+    ]
 }
