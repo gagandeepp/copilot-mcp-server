@@ -4,16 +4,18 @@ import { getToken, githubFetch } from "../github-client.js";
 import type { CopilotSeatsResponse } from "../types.js";
 
 export function registerGetCopilotSeats(server: McpServer): void {
-    server.tool(
+    server.registerTool(
         "get_copilot_seats",
-        "List all Copilot seat assignments for an organization with per-user details including last activity date, editor used, team, and plan type.",
         {
-            org: z.string().describe("GitHub organization login (slug)"),
-            page: z
-                .number()
-                .optional()
-                .default(1)
-                .describe("Page number (50 seats per page)"),
+            description: "List all Copilot seat assignments for an organization with per-user details including last activity date, editor used, team, and plan type.",
+            inputSchema: {
+                org: z.string().describe("GitHub organization login (slug)"),
+                page: z
+                    .number()
+                    .optional()
+                    .default(1)
+                    .describe("Page number (50 seats per page)"),
+            },
         },
         async ({ org, page }) => {
             try {

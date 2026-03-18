@@ -3,10 +3,12 @@ import { getToken, githubFetchAll } from "../github-client.js";
 import type { GitHubOrg } from "../types.js";
 
 export function registerListOrganizations(server: McpServer): void {
-    server.tool(
+    server.registerTool(
         "list_organizations",
-        "List all GitHub organizations the authenticated user belongs to, with their IDs. Use the org login (slug) for subsequent Copilot queries.",
-        {},
+        {
+            description: "List all GitHub organizations the authenticated user belongs to, with their IDs. Use the org login (slug) for subsequent Copilot queries.",
+            inputSchema: {},
+        },
         async () => {
             try {
                 const token = getToken();

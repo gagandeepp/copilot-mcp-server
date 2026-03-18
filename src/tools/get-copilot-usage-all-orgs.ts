@@ -3,10 +3,12 @@ import { getToken, githubFetch, githubFetchAll } from "../github-client.js";
 import type { GitHubOrg, CopilotBilling } from "../types.js";
 
 export function registerGetCopilotUsageAllOrgs(server: McpServer): void {
-    server.tool(
+    server.registerTool(
         "get_copilot_usage_all_orgs",
-        "Get a high-level Copilot usage summary across ALL organizations the authenticated user belongs to. Shows seat counts and active users per org in a single view.",
-        {},
+        {
+            description: "Get a high-level Copilot usage summary across ALL organizations the authenticated user belongs to. Shows seat counts and active users per org in a single view.",
+            inputSchema: {},
+        },
         async () => {
             try {
                 const token = getToken();

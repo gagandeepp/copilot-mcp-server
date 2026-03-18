@@ -4,19 +4,21 @@ import { getToken, githubFetch } from "../github-client.js";
 import type { CopilotMetricDay } from "../types.js";
 
 export function registerGetCopilotMetrics(server: McpServer): void {
-    server.tool(
+    server.registerTool(
         "get_copilot_metrics",
-        "Get aggregated Copilot usage metrics for an organization over recent days, including code completions, chat usage, and active/engaged user counts broken down by editor and model.",
         {
-            org: z.string().describe("GitHub organization login (slug)"),
-            since: z
-                .string()
-                .optional()
-                .describe("Start date in YYYY-MM-DD format (defaults to 28 days ago)"),
-            until: z
-                .string()
-                .optional()
-                .describe("End date in YYYY-MM-DD format (defaults to yesterday)"),
+            description: "Get aggregated Copilot usage metrics for an organization over recent days, including code completions, chat usage, and active/engaged user counts broken down by editor and model.",
+            inputSchema: {
+                org: z.string().describe("GitHub organization login (slug)"),
+                since: z
+                    .string()
+                    .optional()
+                    .describe("Start date in YYYY-MM-DD format (defaults to 28 days ago)"),
+                until: z
+                    .string()
+                    .optional()
+                    .describe("End date in YYYY-MM-DD format (defaults to yesterday)"),
+            },
         },
         async ({ org, since, until }) => {
             try {
