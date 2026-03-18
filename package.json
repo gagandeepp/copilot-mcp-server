@@ -1,11 +1,11 @@
 {
-    "name": "github-copilot-mcp",
+    "name": "copilot-mcp-server",
     "version": "1.0.0",
     "description": "MCP server to query GitHub Copilot usage across organizations",
     "type": "module",
     "main": "dist/index.js",
     "bin": {
-        "github-copilot-mcp": "dist/index.js"
+        "copilot-mcp-server": "dist/index.js"
     },
     "scripts": {
         "build": "tsc",

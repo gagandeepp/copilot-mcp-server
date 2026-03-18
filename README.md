@@ -59,7 +59,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "github-copilot": {
       "command": "node",
-      "args": ["/absolute/path/to/github-copilot-mcp/dist/index.js"],
+      "args": ["/absolute/path/to/copilot-mcp-server/dist/index.js"],
       "env": {
         "GITHUB_TOKEN": "ghp_your_token_here"
       }
@@ -71,7 +71,7 @@ Add to your `claude_desktop_config.json`:
 ## Claude Code Configuration
  
 ```bash
-claude mcp add github-copilot -- node /absolute/path/to/github-copilot-mcp/dist/index.js
+claude mcp add github-copilot -- node /absolute/path/to/copilot-mcp-server/dist/index.js
 ```
  
 Make sure `GITHUB_TOKEN` is set in your shell environment.
@@ -83,7 +83,63 @@ Make sure `GITHUB_TOKEN` is set in your shell environment.
 | `manage_billing:copilot` | Read Copilot billing and seat data |
 | `read:org` | List organizations and their metadata |
  
+## Publishing
+
+### Publish to GitHub Packages
+
+1. Scope the package to your org in `package.json`:
+
+```json
+"name": "@your-org/copilot-mcp-server"
+```
+
+2. Add a `publishConfig` and `prepublishOnly` script:
+
+```json
+"publishConfig": {
+  "registry": "https://npm.pkg.github.com"
+},
+"scripts": {
+  "prepublishOnly": "npm run build"
+}
+```
+
+3. Authenticate and publish:
+
+```bash
+npm login --registry=https://npm.pkg.github.com
+npm publish
+```
+
+### Install from Git
+
+Users can install directly from the repo without a registry:
+
+```bash
+npm install -g git+https://github.com/your-org/copilot-mcp-server.git
+```
+
+### Usage After Publishing
+
+Users can run the server without cloning the repo:
+
+```bash
+npx @your-org/copilot-mcp-server
+```
+
+Or reference it in their MCP client config:
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@your-org/copilot-mcp-server"],
+  "env": {
+    "GITHUB_TOKEN": "ghp_your_token_here"
+  }
+}
+```
+
 ## License
- 
+
 ISC
  
