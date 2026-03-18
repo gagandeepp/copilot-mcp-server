@@ -1,0 +1,49 @@
+import { z } from "zod";
+import { getToken, githubFetch } from "../github-client.js";
+export function registerGetCopilotBillingSummary(server) {
+    server.registerTool("get_copilot_billing_summary", {
+        description: "Get the Copilot billing summary for an organization, including total seats, active/inactive breakdown, plan type, and feature enablement status.",
+        inputSchema: {
+            org: z.string().describe("GitHub organization login (slug), e.g. 'my-company'"),
+        },
+    }, async ({ org }) => {
+        try {
+            const token = getToken();
+            const billing = await githubFetch(`/orgs/${encodeURIComponent(org)}/copilot/billing`, token);
+            const sb = billing.seat_breakdown;
+            const summary = [
+                `## Copilot Billing Summary for **${org}**\n`,
+                `**Plan type:** ${billing.plan_type}`,
+                `**Seat management:** ${billing.seat_management_setting}\n`,
+                `### Seat Breakdown`,
+                `| Metric | Count |`,
+                `|--------|-------|`,
+                `| Total seats | ${sb.total} |`,
+                `| Active this cycle | ${sb.active_this_cycle} |`,
+                `| Inactive this cycle | ${sb.inactive_this_cycle} |`,
+                `| Added this cycle | ${sb.added_this_cycle} |`,
+                `| Pending cancellation | ${sb.pending_cancellation} |`,
+                `| Pending invitation | ${sb.pending_invitation} |\n`,
+                `### Feature Status`,
+                `| Feature | Status |`,
+                `|---------|--------|`,
+                `| Public code suggestions | ${billing.public_code_suggestions} |`,
+                `| IDE Chat | ${billing.ide_chat} |`,
+                `| Platform Chat | ${billing.platform_chat} |`,
+                `| CLI | ${billing.cli} |`,
+            ];
+            return {
+                content: [{ type: "text", text: summary.join("\n") }],
+            };
+        }
+        catch (err) {
+            return {
+                content: [
+                    { type: "text", text: `Error: ${err.message}` },
+                ],
+                isError: true,
+            };
+        }
+    });
+}
+//# sourceMappingURL=get-copilot-billing-summary.js.map
