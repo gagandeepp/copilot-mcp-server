@@ -1,9 +1,9 @@
 {
     "servers": {
-        "vensure-copilot-mcp-server": {
+        "xxxx-copilot-mcp-server": {
             "command": "npx",
             "args": [
-                "@vensure-devops-qa/copilot-mcp-server"
+                "@xxxx-devops-qa/copilot-mcp-server"
             ],
             "env": {
                 "GITHUB_TOKEN": "${input:github-token}"

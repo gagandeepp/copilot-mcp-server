@@ -1,2 +1,2 @@
-@vensure-devops-qa:registry=https://npm.pkg.github.com
+@xxxx-devops-qa:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}

@@ -59,9 +59,9 @@ To use it manually or in another project, create a `.vscode/mcp.json` file:
 ```json
 {
   "servers": {
-    "vensure-copilot-mcp-server": {
+    "xxxx-copilot-mcp-server": {
       "command": "npx",
-      "args": ["@vensure-devops-qa/copilot-mcp-server"],
+      "args": ["@xxxx-devops-qa/copilot-mcp-server"],
       "env": {
         "GITHUB_TOKEN": "${input:github-token}"
       }
@@ -85,9 +85,9 @@ Add the following to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "vensure-copilot-mcp-server": {
+    "xxxx-copilot-mcp-server": {
       "command": "npx",
-      "args": ["-y", "@vensure-devops-qa/copilot-mcp-server"],
+      "args": ["-y", "@xxxx-devops-qa/copilot-mcp-server"],
       "env": {
         "GITHUB_TOKEN": "ghp_your_token_here"
       }
@@ -99,7 +99,7 @@ Add the following to your `claude_desktop_config.json`:
 ## Required GitHub Token Scopes
 
 | Scope | Purpose |
-|-------|---------|
+|-------|----------|
 | `manage_billing:copilot` | Read Copilot billing and seat data |
 | `read:org` | List organizations and their metadata |
 
@@ -110,7 +110,7 @@ Add the following to your `claude_desktop_config.json`:
 1. Scope the package to your org in `package.json`:
 
 ```json
-"name": "@Vensure-Devops-QA/copilot-mcp-server"
+"name": "@Xxxx-Devops-QA/copilot-mcp-server"
 ```
 
 2. Add a `publishConfig` and `prepublishOnly` script:
@@ -144,7 +144,7 @@ npm install -g git+https://github.com/your-org/copilot-mcp-server.git
 Users can run the server without cloning the repo:
 
 ```bash
-npx @Vensure-Devops-QA/copilot-mcp-server
+npx @Xxxx-Devops-QA/copilot-mcp-server
 ```
 
 Or reference it in their MCP client config:
@@ -152,7 +152,7 @@ Or reference it in their MCP client config:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "@Vensure-Devops-QA/copilot-mcp-server"],
+  "args": ["-y", "@Xxxx-Devops-QA/copilot-mcp-server"],
   "env": {
     "GITHUB_TOKEN": "ghp_your_token_here"
   }
