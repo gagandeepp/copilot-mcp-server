@@ -1,1 +1,1 @@
-{"version":3,"file":"get-copilot-seats.d.ts","sourceRoot":"","sources":["../../src/tools/get-copilot-seats.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,8BAA8B,CAAC;AAM9D,wBAAgB,uBAAuB,CAAC,MAAM,EAAE,SAAS,GAAG,IAAI,CA4F/D"}
+{"version":3,"file":"get-copilot-seats.d.ts","sourceRoot":"","sources":["../../src/tools/get-copilot-seats.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,8BAA8B,CAAC;AAO9D,wBAAgB,uBAAuB,CAAC,MAAM,EAAE,SAAS,GAAG,IAAI,CAuC/D"}

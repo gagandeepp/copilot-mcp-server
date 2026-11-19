@@ -1,26 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { ApiError, downloadReport, getToken, githubFetch } from "../github-client.js";
-import { parseReportFile, reportLinks, summarizeReports } from "../metrics-report.js";
-import type { ReportRecord } from "../metrics-report.js";
-import { orgLogin } from "../schemas.js";
-
-const text = (value: string) => ({ content: [{ type: "text" as const, text: value }] });
-
-// The client's generic 403/404 text is about billing; the reports API has its own access rules.
-function metricsErrorMessage(err: unknown): string {
-    if (!(err instanceof ApiError) || err.rateLimited) return (err as Error).message;
-    const githubSays = err.message.match(/ GitHub says: .*$/s)?.[0] ?? "";
-    if (err.status === 403) {
-        return "Access denied (HTTP 403). Copilot usage metrics require an organization owner or the fine-grained " +
-            "\"View Organization Copilot Metrics\" permission (classic tokens need read:org)." + githubSays;
-    }
-    if (err.status === 404) {
-        return "Not found (HTTP 404). Check the org login with list_organizations, and that the organization's " +
-            "\"Copilot usage metrics\" policy is enabled." + githubSays;
-    }
-    return err.message;
-}
+import { EmptyReportError, fetchMetrics, metricsErrorMessage, renderMetricsMarkdown } from "../data/metrics.js";
+import { getToken } from "../github-client.js";
+import { orgLogin, responseFormat } from "../schemas.js";
+import { errorResult, formatResult } from "./result.js";
 
 export function registerGetCopilotMetrics(server: McpServer): void {
     server.registerTool(
@@ -41,57 +24,19 @@ export function registerGetCopilotMetrics(server: McpServer): void {
                     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
                     .optional()
                     .describe("Return this single day's report (YYYY-MM-DD, UTC) instead of the latest 28 days. Daily reports start on 2025-10-10 and go back up to one year."),
+                response_format: responseFormat,
             }),
         },
-        async ({ org, day }, ctx) => {
+        async ({ org, day, response_format }, ctx) => {
             try {
-                const token = getToken();
-
-                const base = `/orgs/${encodeURIComponent(org)}/copilot/metrics/reports`;
-                const path = day
-                    ? `${base}/organization-1-day?${new URLSearchParams({ day })}`
-                    : `${base}/organization-28-day/latest`;
-                const response = await githubFetch<unknown>(path, token, ctx.mcpReq.signal);
-
-                // 204 No Content: GitHub has no report to give.
-                if (response === null) {
-                    return text(
-                        day
-                            ? `No Copilot usage metrics report exists for ${day} in org "${org}". ` +
-                              "Daily reports are available from 2025-10-10 and up to one year back, and a day's data can take up to two full UTC days after it ends to appear. " +
-                              "Omit `day` to get the latest 28-day report."
-                            : `GitHub has no 28-day Copilot usage metrics report for org "${org}" yet. Try again later.`
-                    );
-                }
-
-                const links = reportLinks.safeParse(response);
-                if (!links.success) {
-                    throw new Error("GitHub returned an unexpected response (no download_links). Try again later.");
-                }
-                if (links.data.download_links.length === 0) {
-                    return text(`GitHub returned a Copilot usage metrics report for org "${org}" with no download links. Try again later.`);
-                }
-
-                const records: ReportRecord[] = [];
-                let malformed = 0;
-                for (const link of links.data.download_links) {
-                    const parsed = parseReportFile(await downloadReport(link, ctx.mcpReq.signal));
-                    records.push(...parsed.records);
-                    malformed += parsed.malformed;
-                }
-
-                if (records.length === 0) {
-                    return {
-                        ...text(`The Copilot usage metrics report for org "${org}" had no usable records (${malformed} malformed line(s) skipped).`),
-                        isError: true,
-                    };
-                }
-                return text(summarizeReports(org, records, malformed));
+                const data = await fetchMetrics(org, day, getToken(), ctx.mcpReq.signal);
+                return formatResult(data, response_format, renderMetricsMarkdown);
             } catch (err: unknown) {
-                return {
-                    content: [{ type: "text" as const, text: `Error: ${metricsErrorMessage(err)}` }],
-                    isError: true,
-                };
+                // An empty report is an error whose message needs no "Error: " prefix (unchanged behaviour).
+                if (err instanceof EmptyReportError) {
+                    return { content: [{ type: "text", text: err.message }], isError: true };
+                }
+                return errorResult(metricsErrorMessage(err));
             }
         }
     );

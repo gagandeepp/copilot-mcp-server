@@ -89,14 +89,19 @@ export function parseReportFile(text) {
     }
     return { records, malformed };
 }
-const TOP_N = 10;
-/** Add a row's activity counts into `into`; counts a row does not report stay unset so they print as a dash, not 0. */
+/** Add a row's activity counts into `into`; counts a row does not report stay unset so they stay null, not 0. */
 function addActivity(into, row) {
     for (const key of ACTIVITY_KEYS) {
         const value = row[key];
         if (typeof value === "number")
             into[key] = (into[key] ?? 0) + value;
     }
+}
+function toActivity(row) {
+    const out = {};
+    for (const key of ACTIVITY_KEYS)
+        out[key] = row[key] ?? null;
+    return out;
 }
 function groupBy(rows, name) {
     const groups = new Map();
@@ -108,30 +113,15 @@ function groupBy(rows, name) {
     }
     return groups;
 }
-const cell = (value) => value.replace(/[|\r\n]+/g, " ").slice(0, 80);
-const show = (value) => (typeof value === "number" ? String(value) : "—");
 const rank = (t) => (t.code_generation_activity_count ?? 0) + (t.user_initiated_interaction_count ?? 0);
-function activityRow(name, t) {
-    return (`| ${cell(name)} | ${show(t.user_initiated_interaction_count)} | ${show(t.code_generation_activity_count)} ` +
-        `| ${show(t.code_acceptance_activity_count)} | ${show(t.loc_suggested_to_add_sum)} | ${show(t.loc_added_sum)} |`);
-}
-function activityTable(nameHeader, rows) {
-    return [
-        `| ${nameHeader} | Prompts | Generations | Accepted | Lines suggested | Lines added |`,
-        `|---|---|---|---|---|---|`,
-        ...rows.map(([name, totals]) => activityRow(name, totals)),
-    ];
-}
-function breakdown(title, nameHeader, groups) {
-    if (groups.size === 0)
-        return [];
-    const rows = [...groups].sort(([aName, a], [bName, b]) => rank(b) - rank(a) || (b.loc_added_sum ?? 0) - (a.loc_added_sum ?? 0) || aName.localeCompare(bName));
-    const suffix = rows.length > TOP_N ? `, top ${TOP_N} of ${rows.length}` : "";
-    return ["", `### ${title}${suffix}`, ...activityTable(nameHeader, rows.slice(0, TOP_N))];
+function rankedRows(groups) {
+    return [...groups]
+        .sort(([aName, a], [bName, b]) => rank(b) - rank(a) || (b.loc_added_sum ?? 0) - (a.loc_added_sum ?? 0) || aName.localeCompare(bName))
+        .map(([name, totals]) => ({ name, ...toActivity(totals) }));
 }
 const isWrapper = (record) => Array.isArray(record.day_totals);
-/** Summarise parsed report records (a 28-day report or a single day) as compact Markdown. */
-export function summarizeReports(org, records, malformed) {
+/** Aggregate parsed report records (a 28-day report or a single day) into the metrics summary data. */
+export function buildMetricsSummary(org, records, malformed) {
     const wrappers = records.filter(isWrapper);
     const days = records.flatMap((r) => (isWrapper(r) ? r.day_totals : [r]));
     const dated = days
@@ -143,39 +133,13 @@ export function summarizeReports(org, records, malformed) {
     ]
         .filter((d) => typeof d === "string")
         .sort();
-    const first = dates[0];
-    const last = dates.at(-1);
-    const period = first === undefined ? "" : first === last ? `Day: ${first}` : `Period: ${first} to ${last}`;
-    const lines = [`## Copilot Usage Metrics for **${org}**`, `_${[period, `${days.length} day(s) of data`].filter(Boolean).join(" · ")}_`];
-    if (malformed > 0)
-        lines.push(`_Skipped ${malformed} malformed line(s) in the report._`);
-    if (days.length === 0)
-        return [...lines, "", "The report contains no daily records."].join("\n");
     // Distinct-user counts cannot be summed across days: take them from the latest day.
-    const latest = dated.at(-1) ?? days[days.length - 1];
-    const users = [
-        [latest.day ? `Daily active (${latest.day})` : "Daily active", latest.daily_active_users],
-        ["Weekly active (trailing 7 days)", latest.weekly_active_users],
-        ["Monthly active (trailing 28 days)", latest.monthly_active_users],
-        ["Monthly chat users (28 days)", latest.monthly_active_chat_users],
-        ["Monthly agent mode users (28 days)", latest.monthly_active_agent_users],
-    ];
+    const latest = dated.at(-1) ?? days.at(-1);
     const daily = days.map((d) => d.daily_active_users).filter((n) => typeof n === "number");
-    if (daily.length > 1) {
-        users.push(["Peak daily active", Math.max(...daily)]);
-        users.push(["Average daily active", Number((daily.reduce((a, b) => a + b, 0) / daily.length).toFixed(1))]);
-    }
-    lines.push("", "### Active Users", "| Metric | Users |", "|---|---|");
-    for (const [label, value] of users) {
-        if (typeof value === "number")
-            lines.push(`| ${label} | ${value} |`);
-    }
     const engagement = wrappers.map((w) => w.copilot_feature_engagement).filter((e) => e != null).at(-1);
-    const engaged = (engagement?.totals_by_feature ?? []).filter((f) => typeof f.engaged_user_count === "number");
-    if (engaged.length > 0) {
-        lines.push("", `**Feature engagement** (users active on at least 2 days of the window; features overlap, so do not add them): ` +
-            engaged.map((f) => `${cell(f.feature ?? "unknown")} ${f.engaged_user_count}`).join(", "));
-    }
+    const engaged = (engagement?.totals_by_feature ?? []).flatMap((f) => typeof f.engaged_user_count === "number"
+        ? [{ feature: f.feature ?? "unknown", engaged_user_count: f.engaged_user_count }]
+        : []);
     // Headline activity is the sum of the daily totals; the feature rows come from the breakdowns, which can omit server-side-only users.
     const everything = {};
     const completions = {};
@@ -189,26 +153,36 @@ export function summarizeReports(org, records, malformed) {
                 addActivity(chat, row);
         }
     }
-    const activityRows = [["All activity", everything]];
-    if (Object.keys(completions).length > 0)
-        activityRows.push(["Code completions", completions]);
-    if (Object.keys(chat).length > 0)
-        activityRows.push(["Chat", chat]);
-    lines.push("", "### Activity (sum over the period)", ...activityTable("Scope", activityRows));
-    lines.push(...breakdown("By IDE", "IDE", groupBy(days.flatMap((d) => d.totals_by_ide ?? []), (r) => r.ide)));
-    lines.push(...breakdown("By feature", "Feature", groupBy(days.flatMap((d) => d.totals_by_feature ?? []), (r) => r.feature)));
-    lines.push(...breakdown("By language", "Language", groupBy(days.flatMap((d) => d.totals_by_language_feature ?? []), (r) => r.language)));
     // Both model breakdowns slice the same chat activity, so use one source and never add them together.
     const modelFeature = days.flatMap((d) => d.totals_by_model_feature ?? []);
     const modelRows = modelFeature.length > 0 ? modelFeature : days.flatMap((d) => d.totals_by_language_model ?? []);
-    lines.push(...breakdown("By model (chat only)", "Model", groupBy(modelRows, (r) => r.model)));
-    if (dated.length > 1) {
-        lines.push("", "### Daily", "| Day | Active users | Prompts | Generations | Accepted | Lines added |", "|---|---|---|---|---|---|");
-        for (const d of dated) {
-            lines.push(`| ${d.day} | ${show(d.daily_active_users)} | ${show(d.user_initiated_interaction_count)} ` +
-                `| ${show(d.code_generation_activity_count)} | ${show(d.code_acceptance_activity_count)} | ${show(d.loc_added_sum)} |`);
-        }
-    }
-    return lines.join("\n");
+    return {
+        org,
+        available: true,
+        period: { start: dates[0] ?? null, end: dates.at(-1) ?? null },
+        day_count: days.length,
+        malformed_lines: malformed,
+        active_users: {
+            as_of_day: latest?.day || null,
+            daily: latest?.daily_active_users ?? null,
+            weekly: latest?.weekly_active_users ?? null,
+            monthly: latest?.monthly_active_users ?? null,
+            monthly_chat: latest?.monthly_active_chat_users ?? null,
+            monthly_agent: latest?.monthly_active_agent_users ?? null,
+            peak_daily: daily.length > 1 ? Math.max(...daily) : null,
+            average_daily: daily.length > 1 ? Number((daily.reduce((a, b) => a + b, 0) / daily.length).toFixed(1)) : null,
+        },
+        feature_engagement: engaged,
+        activity: {
+            all: toActivity(everything),
+            code_completions: Object.keys(completions).length > 0 ? toActivity(completions) : null,
+            chat: Object.keys(chat).length > 0 ? toActivity(chat) : null,
+        },
+        by_ide: rankedRows(groupBy(days.flatMap((d) => d.totals_by_ide ?? []), (r) => r.ide)),
+        by_feature: rankedRows(groupBy(days.flatMap((d) => d.totals_by_feature ?? []), (r) => r.feature)),
+        by_language: rankedRows(groupBy(days.flatMap((d) => d.totals_by_language_feature ?? []), (r) => r.language)),
+        by_model: rankedRows(groupBy(modelRows, (r) => r.model)),
+        daily: dated.map((d) => ({ day: d.day, daily_active_users: d.daily_active_users ?? null, ...toActivity(d) })),
+    };
 }
 //# sourceMappingURL=metrics-report.js.map

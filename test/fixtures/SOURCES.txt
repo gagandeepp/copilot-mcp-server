@@ -1,0 +1,19 @@
+Fixtures captured 2026-11-19 from github/docs (main) raw sources and github/rest-api-description (main).
+Documented facts (verbatim code blocks):
+- docs-enterprise-example-schema.json : code block under "Enterprise-level schema example"
+    https://docs.github.com/en/copilot/reference/copilot-usage-metrics/example-schema
+    (raw: https://raw.githubusercontent.com/github/docs/main/content/copilot/reference/copilot-usage-metrics/example-schema.md lines 286-815)
+    A JSON array of TWO enterprise-scope 28-day report records (each has day_totals[], enterprise_id, report_start_day,
+    report_end_day, copilot_feature_engagement). The docs show no organization-scope aggregated example; they state org
+    reports use the same fields plus organization_id. Docs render the NDJSON rows as a pretty-printed array.
+- docs-organization-user-teams-example.json : "Organization user-teams schema example" block (same page; not used by the tool)
+- docs-team-level-user-teams-sample.ndjson : 3 NDJSON rows verbatim from
+    https://docs.github.com/en/copilot/reference/copilot-usage-metrics/team-level-metrics (shows real one-record-per-line format)
+- (not included in the repo) openapi-1-day-envelope-example.json / openapi-28-day-envelope-example.json : OpenAPI examples for the API response envelope,
+    https://github.com/github/rest-api-description descriptions/api.github.com/api.github.com.json
+    components.examples.copilot-usage-metrics-1-day-report / -28-day-report (download links end in .ndjson)
+Derived (NOT from docs; built by transformation for local verification): see derived/
+derived/ (built by test/fixtures/make-derived.mjs from the docs enterprise example; NOT documented output):
+  org-28-day.ndjson, org-28-day-pretty-array.json, org-28-day-null-engagement.ndjson, org-1-day.ndjson,
+  org-1-day-one-malformed-line.ndjson. They add organization_id, 3 days, non-empty totals_by_model_feature, explicit nulls,
+  an unknown future field, a '|' + newline in an IDE name, and 15 languages (top-10 cap).

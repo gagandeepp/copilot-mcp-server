@@ -1,0 +1,1 @@
+The Copilot usage metrics report for org "allbad" had no usable records (3 malformed line(s) skipped).

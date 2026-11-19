@@ -9,3 +9,11 @@ export const orgLogin = z
         /^[A-Za-z0-9](?:[A-Za-z0-9_-]*[A-Za-z0-9])?$/,
         "Must be a GitHub organization login; use list_organizations to find it"
     );
+
+// Shared by every tool: 'json' returns the data as structuredContent (and as JSON text), 'markdown' a readable summary.
+export const responseFormat = z
+    .enum(["markdown", "json"])
+    .default("markdown")
+    .describe("'markdown' (default) for a readable summary, 'json' for structured data");
+
+export type ResponseFormat = z.infer<typeof responseFormat>;
