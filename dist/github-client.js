@@ -1,4 +1,12 @@
 const GITHUB_API = "https://api.github.com";
+export class ApiError extends Error {
+    status;
+    constructor(status, message) {
+        super(message);
+        this.status = status;
+        this.name = "ApiError";
+    }
+}
 export function getToken() {
     const token = process.env.GITHUB_TOKEN;
     if (!token) {
@@ -19,7 +27,7 @@ export async function githubFetch(path, token) {
     });
     if (!res.ok) {
         const body = await res.text();
-        throw new Error(`GitHub API error ${res.status}: ${body}`);
+        throw new ApiError(res.status, `GitHub API error ${res.status}: ${body}`);
     }
     return res.json();
 }
@@ -39,7 +47,7 @@ export async function githubFetchAll(path, token) {
         });
         if (!res.ok) {
             const body = await res.text();
-            throw new Error(`GitHub API error ${res.status}: ${body}`);
+            throw new ApiError(res.status, `GitHub API error ${res.status}: ${body}`);
         }
         const data = (await res.json());
         items.push(...data);

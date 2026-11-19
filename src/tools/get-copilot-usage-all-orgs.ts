@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getToken, githubFetch, githubFetchAll } from "../github-client.js";
+import { ApiError, getToken, githubFetch, githubFetchAll } from "../github-client.js";
 import type { GitHubOrg, CopilotBilling } from "../types.js";
 
 export function registerGetCopilotUsageAllOrgs(server: McpServer): void {
@@ -34,7 +34,8 @@ export function registerGetCopilotUsageAllOrgs(server: McpServer): void {
                 let totalSeats = 0;
                 let totalActive = 0;
                 let totalInactive = 0;
-                const errors: string[] = [];
+                const skipped: string[] = [];
+                const failed: string[] = [];
 
                 for (const org of orgs) {
                     try {
@@ -56,15 +57,30 @@ export function registerGetCopilotUsageAllOrgs(server: McpServer): void {
                             `| ${sb.pending_cancellation} ` +
                             `| ${sb.pending_invitation} |`
                         );
-                    } catch {
-                        errors.push(
-                            `| ${org.login} | _No Copilot subscription or insufficient permissions_ | — | — | — | — | — |`
-                        );
+                    } catch (err: unknown) {
+                        if (err instanceof ApiError && err.status === 404) {
+                            skipped.push(
+                                `| ${org.login} | _No Copilot subscription or no access_ | — | — | — | — | — |`
+                            );
+                        } else if (err instanceof ApiError && err.status === 403) {
+                            skipped.push(
+                                `| ${org.login} | _Insufficient permissions (requires org owner with manage_billing:copilot or read:org)_ | — | — | — | — | — |`
+                            );
+                        } else if (err instanceof ApiError) {
+                            failed.push(
+                                `| ${org.login} | _Error: HTTP ${err.status}_ | — | — | — | — | — |`
+                            );
+                        } else {
+                            const message = (err instanceof Error ? err.message : String(err)).replace(/[|\r\n]/g, " ");
+                            failed.push(
+                                `| ${org.login} | _Error: request failed (${message})_ | — | — | — | — | — |`
+                            );
+                        }
                     }
                 }
 
                 // Add error rows
-                lines.push(...errors);
+                lines.push(...skipped, ...failed);
 
                 // Grand total
                 lines.push(
@@ -75,9 +91,15 @@ export function registerGetCopilotUsageAllOrgs(server: McpServer): void {
                     `- Total inactive users: ${totalInactive}`
                 );
 
-                if (errors.length > 0) {
+                if (skipped.length > 0) {
                     lines.push(
-                        `\n_Note: ${errors.length} org(s) had no Copilot subscription or returned errors._`
+                        `\n_Note: ${skipped.length} org(s) skipped (no Copilot subscription, no access, or insufficient permissions)._`
+                    );
+                }
+
+                if (failed.length > 0) {
+                    lines.push(
+                        `\n**Warning:** ${failed.length} org(s) failed with errors, so the totals above are incomplete. Retry later or check GITHUB_TOKEN.`
                     );
                 }
 

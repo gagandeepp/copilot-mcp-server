@@ -11,7 +11,7 @@ import { registerGetCopilotUsageAllOrgs } from "./tools/get-copilot-usage-all-or
 
 const server = new McpServer({
     name: "github-copilot-usage",
-    version: "1.0.0",
+    version: "1.0.1",
 });
 
 registerListOrganizations(server);

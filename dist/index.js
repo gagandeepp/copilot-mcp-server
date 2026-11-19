@@ -9,7 +9,7 @@ import { registerGetCopilotMetrics } from "./tools/get-copilot-metrics.js";
 import { registerGetCopilotUsageAllOrgs } from "./tools/get-copilot-usage-all-orgs.js";
 const server = new McpServer({
     name: "github-copilot-usage",
-    version: "1.0.0",
+    version: "1.0.1",
 });
 registerListOrganizations(server);
 registerGetCopilotBillingSummary(server);
