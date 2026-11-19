@@ -1,15 +1,33 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { getToken, githubFetch } from "../github-client.js";
+import { ApiError, downloadReport, getToken, githubFetch } from "../github-client.js";
+import { parseReportFile, reportLinks, summarizeReports } from "../metrics-report.js";
+import type { ReportRecord } from "../metrics-report.js";
 import { orgLogin } from "../schemas.js";
-import type { CopilotMetricDay } from "../types.js";
+
+const text = (value: string) => ({ content: [{ type: "text" as const, text: value }] });
+
+// The client's generic 403/404 text is about billing; the reports API has its own access rules.
+function metricsErrorMessage(err: unknown): string {
+    if (!(err instanceof ApiError) || err.rateLimited) return (err as Error).message;
+    const githubSays = err.message.match(/ GitHub says: .*$/s)?.[0] ?? "";
+    if (err.status === 403) {
+        return "Access denied (HTTP 403). Copilot usage metrics require an organization owner or the fine-grained " +
+            "\"View Organization Copilot Metrics\" permission (classic tokens need read:org)." + githubSays;
+    }
+    if (err.status === 404) {
+        return "Not found (HTTP 404). Check the org login with list_organizations, and that the organization's " +
+            "\"Copilot usage metrics\" policy is enabled." + githubSays;
+    }
+    return err.message;
+}
 
 export function registerGetCopilotMetrics(server: McpServer): void {
     server.registerTool(
         "get_copilot_metrics",
         {
             title: "Copilot Usage Metrics",
-            description: "Get aggregated Copilot usage metrics for an organization over recent days, including code completions, chat usage, and active/engaged user counts broken down by editor and model.",
+            description: "Get Copilot usage metrics for an organization from GitHub's usage-metrics reports: daily, weekly and monthly active users, prompts, code generations, acceptances and lines of code, broken down by IDE, feature, language and model, with a per-day table for the 28-day report. Returns the latest 28-day report by default, or a single day's report when `day` is given. Requires an organization owner token or the fine-grained \"View Organization Copilot Metrics\" permission (classic tokens need read:org), and the organization's \"Copilot usage metrics\" policy must be enabled.",
             annotations: {
                 readOnlyHint: true,
                 destructiveHint: false,
@@ -18,104 +36,60 @@ export function registerGetCopilotMetrics(server: McpServer): void {
             },
             inputSchema: z.strictObject({
                 org: orgLogin.describe("GitHub organization login (slug)"),
-                since: z
+                day: z
                     .string()
                     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
                     .optional()
-                    .describe("Start date in YYYY-MM-DD format (defaults to 28 days ago)"),
-                until: z
-                    .string()
-                    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
-                    .optional()
-                    .describe("End date in YYYY-MM-DD format (defaults to yesterday)"),
+                    .describe("Return this single day's report (YYYY-MM-DD, UTC) instead of the latest 28 days. Daily reports start on 2025-10-10 and go back up to one year."),
             }),
         },
-        async ({ org, since, until }, ctx) => {
+        async ({ org, day }, ctx) => {
             try {
                 const token = getToken();
 
-                const params = new URLSearchParams({ per_page: "28" });
-                if (since) params.set("since", since);
-                if (until) params.set("until", until);
-                const path = `/orgs/${encodeURIComponent(org)}/copilot/metrics?${params}`;
+                const base = `/orgs/${encodeURIComponent(org)}/copilot/metrics/reports`;
+                const path = day
+                    ? `${base}/organization-1-day?${new URLSearchParams({ day })}`
+                    : `${base}/organization-28-day/latest`;
+                const response = await githubFetch<unknown>(path, token, ctx.mcpReq.signal);
 
-                const metrics = await githubFetch<CopilotMetricDay[]>(path, token, ctx.mcpReq.signal);
-
-                if (!metrics || metrics.length === 0) {
-                    return {
-                        content: [
-                            {
-                                type: "text" as const,
-                                text: `No Copilot metrics found for org "${org}" in the specified date range.`,
-                            },
-                        ],
-                    };
-                }
-
-                const lines: string[] = [
-                    `## Copilot Usage Metrics for **${org}**`,
-                    `_Showing ${metrics.length} day(s) of data_\n`,
-                    `| Date | Active Users | Engaged Users | Completions Users | Chat (IDE) Users | Chat (Web) Users | PR Users |`,
-                    `|------|-------------|---------------|-------------------|------------------|------------------|----------|`,
-                ];
-
-                for (const day of metrics) {
-                    lines.push(
-                        `| ${day.date} ` +
-                        `| ${day.total_active_users} ` +
-                        `| ${day.total_engaged_users} ` +
-                        `| ${day.copilot_ide_code_completions?.total_engaged_users ?? "—"} ` +
-                        `| ${day.copilot_ide_chat?.total_engaged_users ?? "—"} ` +
-                        `| ${day.copilot_dotcom_chat?.total_engaged_users ?? "—"} ` +
-                        `| ${day.copilot_dotcom_pull_requests?.total_engaged_users ?? "—"} |`
+                // 204 No Content: GitHub has no report to give.
+                if (response === null) {
+                    return text(
+                        day
+                            ? `No Copilot usage metrics report exists for ${day} in org "${org}". ` +
+                              "Daily reports are available from 2025-10-10 and up to one year back, and a day's data can take up to two full UTC days after it ends to appear. " +
+                              "Omit `day` to get the latest 28-day report."
+                            : `GitHub has no 28-day Copilot usage metrics report for org "${org}" yet. Try again later.`
                     );
                 }
 
-                // Summary statistics
-                const totalActive = metrics.reduce(
-                    (sum, d) => Math.max(sum, d.total_active_users),
-                    0
-                );
-                const totalEngaged = metrics.reduce(
-                    (sum, d) => Math.max(sum, d.total_engaged_users),
-                    0
-                );
-                const avgActive = (
-                    metrics.reduce((sum, d) => sum + d.total_active_users, 0) /
-                    metrics.length
-                ).toFixed(1);
-                const avgEngaged = (
-                    metrics.reduce((sum, d) => sum + d.total_engaged_users, 0) /
-                    metrics.length
-                ).toFixed(1);
-
-                lines.push(
-                    `\n### Summary`,
-                    `- Peak active users: ${totalActive}`,
-                    `- Peak engaged users: ${totalEngaged}`,
-                    `- Average daily active users: ${avgActive}`,
-                    `- Average daily engaged users: ${avgEngaged}`
-                );
-
-                // Editor breakdown from latest day
-                const latest = metrics[metrics.length - 1];
-                if (latest.copilot_ide_code_completions?.editors) {
-                    lines.push(`\n### Editor Breakdown (latest day: ${latest.date})`);
-                    lines.push(`| Editor | Engaged Users |`);
-                    lines.push(`|--------|---------------|`);
-                    for (const editor of latest.copilot_ide_code_completions.editors) {
-                        lines.push(`| ${editor.name} | ${editor.total_engaged_users} |`);
-                    }
+                const links = reportLinks.safeParse(response);
+                if (!links.success) {
+                    throw new Error("GitHub returned an unexpected response (no download_links). Try again later.");
+                }
+                if (links.data.download_links.length === 0) {
+                    return text(`GitHub returned a Copilot usage metrics report for org "${org}" with no download links. Try again later.`);
                 }
 
-                return {
-                    content: [{ type: "text" as const, text: lines.join("\n") }],
-                };
+                const records: ReportRecord[] = [];
+                let malformed = 0;
+                for (const link of links.data.download_links) {
+                    const parsed = parseReportFile(await downloadReport(link, ctx.mcpReq.signal));
+                    records.push(...parsed.records);
+                    malformed += parsed.malformed;
+                }
+
+                if (records.length === 0) {
+                    return {
+                        ...text(`The Copilot usage metrics report for org "${org}" had no usable records (${malformed} malformed line(s) skipped).`),
+                        isError: true,
+                    };
+                }
+                return text(summarizeReports(org, records, malformed));
             } catch (err: unknown) {
                 return {
-                    content: [
-                        { type: "text" as const, text: `Error: ${(err as Error).message}` },
-                    ],
+                    content: [{ type: "text" as const, text: `Error: ${metricsErrorMessage(err)}` }],
                     isError: true,
                 };
             }

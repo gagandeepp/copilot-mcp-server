@@ -42,47 +42,4 @@ export interface CopilotSeatsResponse {
     total_seats: number;
     seats: CopilotSeatDetail[];
 }
-export interface CopilotMetricDay {
-    date: string;
-    total_active_users: number;
-    total_engaged_users: number;
-    copilot_ide_code_completions?: {
-        total_engaged_users: number;
-        editors?: Array<{
-            name: string;
-            total_engaged_users: number;
-            models?: Array<{
-                name: string;
-                total_engaged_users: number;
-                total_code_acceptances: number;
-                total_code_suggestions: number;
-                total_code_lines_accepted: number;
-                total_code_lines_suggested: number;
-            }>;
-        }>;
-    };
-    copilot_ide_chat?: {
-        total_engaged_users: number;
-        editors?: Array<{
-            name: string;
-            total_engaged_users: number;
-            models?: Array<{
-                name: string;
-                total_engaged_users: number;
-                total_chats: number;
-            }>;
-        }>;
-    };
-    copilot_dotcom_chat?: {
-        total_engaged_users: number;
-        models?: Array<{
-            name: string;
-            total_engaged_users: number;
-            total_chats: number;
-        }>;
-    };
-    copilot_dotcom_pull_requests?: {
-        total_engaged_users: number;
-    };
-}
 //# sourceMappingURL=types.d.ts.map

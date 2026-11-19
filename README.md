@@ -43,12 +43,24 @@ Lists all individual Copilot seat assignments with per-user details: last activi
 **Parameters:** `org` (string), `page` (number, optional, default 1).
 
 ### `get_copilot_metrics`
-Returns aggregated daily Copilot usage metrics: active users, engaged users, code completions, IDE chat, web chat, and PR summaries — broken down by editor and model.
+Returns Copilot usage metrics for an organization from GitHub's usage-metrics reports: daily, weekly and monthly active users, prompts, code generations, acceptances and lines of code, broken down by IDE, feature, language and model (top 10 each), plus a per-day table for the 28-day report. By default it returns the latest 28-day report; with `day` it returns that single day.
 
-**Parameters:** `org` (string), `since` (YYYY-MM-DD, optional), `until` (YYYY-MM-DD, optional).
+**Parameters:** `org` (string), `day` (YYYY-MM-DD, optional) — a single day's report instead of the latest 28 days. Daily reports are available from 2025-10-10 and up to one year back; a day's data can take up to two full UTC days after it ends to appear. If there is no report for that day, the tool says so.
+
+**Requirements:**
+- An organization owner, or a user with the fine-grained "View Organization Copilot Metrics" permission. Classic personal access tokens need the `read:org` scope.
+- The organization's "Copilot usage metrics" policy must be enabled.
+
+The tool uses GitHub's `organization-28-day/latest` and `organization-1-day` report endpoints, which return short-lived signed download links. The tool downloads the report files itself (without sending your token) and rejects files over 25 MB.
 
 ### `get_copilot_usage_all_orgs`
 Scans ALL organizations at once and returns a summary table showing seat counts and active/inactive users per org, plus grand totals.
+
+## Breaking changes in 2.0.0
+
+- Node.js 20.3 or later is required.
+- Tool arguments are strict: unknown arguments are rejected instead of ignored.
+- `get_copilot_metrics`: `since` and `until` are replaced by `day`. GitHub retired the legacy `/orgs/{org}/copilot/metrics` endpoint, so the tool now uses the usage-metrics reports API and returns a different summary (active users, prompts, generations, acceptances and lines, with IDE, feature, language and model breakdowns).
 
 ## VSCode Configuration
 

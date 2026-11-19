@@ -1,6 +1,8 @@
 import { version } from "./version.js";
 const GITHUB_API = "https://api.github.com";
 const REQUEST_TIMEOUT_MS = 30_000;
+const MAX_REPORT_BYTES = 25 * 1024 * 1024;
+const USER_AGENT = `copilot-mcp-server/${version}`;
 export class ApiError extends Error {
     status;
     rateLimited;
@@ -76,25 +78,10 @@ async function toApiError(res) {
     }
     return new ApiError(status, message, { rateLimited });
 }
-/** One GitHub request: standard headers, token only for api.github.com, 30 s timeout combined with the caller's signal. */
-async function request(url, token, signal) {
-    const headers = {
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": `copilot-mcp-server/${version}`,
-    };
-    if (new URL(url).origin === GITHUB_API) {
-        headers.Authorization = `Bearer ${token}`;
-    }
+/** Run `fn` with the caller's signal combined with the 30 s timeout; a timeout becomes a plain recovery message. */
+async function withTimeout(signal, fn) {
     try {
-        // The timeout also covers reading the body, so parse it inside this try.
-        const res = await fetch(url, {
-            headers,
-            signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
-        });
-        if (!res.ok)
-            throw await toApiError(res);
-        return { data: await res.json(), link: res.headers.get("link") };
+        return await fn(AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(REQUEST_TIMEOUT_MS)]));
     }
     catch (err) {
         if (err instanceof DOMException && err.name === "TimeoutError") {
@@ -102,6 +89,72 @@ async function request(url, token, signal) {
         }
         throw err;
     }
+}
+/** One GitHub request: standard headers, token only for api.github.com, 30 s timeout combined with the caller's signal. */
+async function request(url, token, signal) {
+    const headers = {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": USER_AGENT,
+    };
+    if (new URL(url).origin === GITHUB_API) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+    // The timeout also covers reading the body, so parse it inside the timeout scope.
+    return withTimeout(signal, async (combined) => {
+        const res = await fetch(url, { headers, signal: combined });
+        if (!res.ok)
+            throw await toApiError(res);
+        // 204 No Content (for example a report day with no data) has no body to parse.
+        return { data: res.status === 204 ? null : await res.json(), link: res.headers.get("link") };
+    });
+}
+/**
+ * Download a signed report link as text. The link carries its own credentials, so the GitHub token is never
+ * accepted or sent. Only https links are allowed, and files over 25 MB are rejected (by content-length and while streaming).
+ */
+export async function downloadReport(url, signal) {
+    let protocol = "";
+    try {
+        protocol = new URL(url).protocol;
+    }
+    catch {
+        // Not a URL at all: rejected below with the non-https error.
+    }
+    if (protocol !== "https:") {
+        throw new Error("Refusing to download a report from a link that is not https.");
+    }
+    const tooLarge = () => new Error("The report file is larger than 25 MB, which is more than this tool will download.");
+    return withTimeout(signal, async (combined) => {
+        const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: combined });
+        if (!res.ok) {
+            void res.body?.cancel().catch(() => { });
+            if (res.status === 403 || res.status === 404) {
+                throw new Error("The report download link expired or is invalid. Call the tool again to get a fresh link.");
+            }
+            throw new Error(`Report download failed (HTTP ${res.status}).`);
+        }
+        if (Number(res.headers.get("content-length")) > MAX_REPORT_BYTES) {
+            void res.body?.cancel().catch(() => { });
+            throw tooLarge();
+        }
+        // Count raw bytes while streaming and decode once at the end, so multi-byte characters split across chunks stay intact.
+        const chunks = [];
+        let received = 0;
+        const reader = res.body?.getReader();
+        while (reader) {
+            const { done, value } = await reader.read();
+            if (done)
+                break;
+            received += value.byteLength;
+            if (received > MAX_REPORT_BYTES) {
+                await reader.cancel();
+                throw tooLarge();
+            }
+            chunks.push(value);
+        }
+        return new TextDecoder().decode(Buffer.concat(chunks));
+    });
 }
 export async function githubFetch(path, token, signal) {
     const url = path.startsWith("http") ? path : `${GITHUB_API}${path}`;
