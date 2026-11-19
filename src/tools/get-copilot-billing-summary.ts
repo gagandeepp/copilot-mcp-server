@@ -1,5 +1,5 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/server";
+import * as z from "zod/v4";
 import { getToken, githubFetch } from "../github-client.js";
 import type { CopilotBilling } from "../types.js";
 
@@ -8,9 +8,9 @@ export function registerGetCopilotBillingSummary(server: McpServer): void {
         "get_copilot_billing_summary",
         {
             description: "Get the Copilot billing summary for an organization, including total seats, active/inactive breakdown, plan type, and feature enablement status.",
-            inputSchema: {
+            inputSchema: z.strictObject({
                 org: z.string().describe("GitHub organization login (slug), e.g. 'my-company'"),
-            },
+            }),
         },
         async ({ org }) => {
             try {

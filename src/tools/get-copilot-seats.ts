@@ -1,5 +1,5 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/server";
+import * as z from "zod/v4";
 import { getToken, githubFetch } from "../github-client.js";
 import type { CopilotSeatsResponse } from "../types.js";
 
@@ -8,14 +8,14 @@ export function registerGetCopilotSeats(server: McpServer): void {
         "get_copilot_seats",
         {
             description: "List all Copilot seat assignments for an organization with per-user details including last activity date, editor used, team, and plan type.",
-            inputSchema: {
+            inputSchema: z.strictObject({
                 org: z.string().describe("GitHub organization login (slug)"),
                 page: z
                     .number()
                     .optional()
                     .default(1)
                     .describe("Page number (50 seats per page)"),
-            },
+            }),
         },
         async ({ org, page }) => {
             try {

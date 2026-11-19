@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that exposes GitHub Copilot usage data ac
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - A GitHub Personal Access Token (classic) with these scopes:
   - `manage_billing:copilot` — to read Copilot billing/seat data
   - `read:org` — to list organizations

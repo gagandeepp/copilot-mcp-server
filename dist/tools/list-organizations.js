@@ -2,7 +2,6 @@ import { getToken, githubFetchAll } from "../github-client.js";
 export function registerListOrganizations(server) {
     server.registerTool("list_organizations", {
         description: "List all GitHub organizations the authenticated user belongs to, with their IDs. Use the org login (slug) for subsequent Copilot queries.",
-        inputSchema: {},
     }, async () => {
         try {
             const token = getToken();

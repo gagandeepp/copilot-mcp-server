@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-An MCP (Model Context Protocol) server that exposes GitHub Copilot management tools — billing, seats, metrics, and usage across organizations. Communicates over stdio using `@modelcontextprotocol/sdk`.
+An MCP (Model Context Protocol) server that exposes GitHub Copilot management tools — billing, seats, metrics, and usage across organizations. Communicates over stdio using `@modelcontextprotocol/server` (MCP TypeScript SDK v2), serving both the 2026-07-28 protocol revision and 2025-era clients.
 
 ## Commands
 
@@ -22,7 +22,7 @@ No test framework is currently configured.
 
 ### Entry Point
 
-`src/index.ts` — Thin entrypoint (~30 lines) with `#!/usr/bin/env node` shebang. Creates `McpServer`, registers all tools, starts `StdioServerTransport`.
+`src/index.ts` — Thin entrypoint (~40 lines) with `#!/usr/bin/env node` shebang. Defines a `createServer()` factory that builds a new `McpServer` and registers all tools, then starts it with `serveStdio(createServer)` from `@modelcontextprotocol/server/stdio`.
 
 ### Tool Modules (`src/tools/`)
 

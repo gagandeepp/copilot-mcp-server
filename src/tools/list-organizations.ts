@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { getToken, githubFetchAll } from "../github-client.js";
 import type { GitHubOrg } from "../types.js";
 
@@ -7,7 +7,6 @@ export function registerListOrganizations(server: McpServer): void {
         "list_organizations",
         {
             description: "List all GitHub organizations the authenticated user belongs to, with their IDs. Use the org login (slug) for subsequent Copilot queries.",
-            inputSchema: {},
         },
         async () => {
             try {
