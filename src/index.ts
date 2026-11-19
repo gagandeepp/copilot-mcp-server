@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import "dotenv/config";
-import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { registerListOrganizations } from "./tools/list-organizations.js";
@@ -9,11 +8,7 @@ import { registerGetCopilotBillingSummary } from "./tools/get-copilot-billing-su
 import { registerGetCopilotSeats } from "./tools/get-copilot-seats.js";
 import { registerGetCopilotMetrics } from "./tools/get-copilot-metrics.js";
 import { registerGetCopilotUsageAllOrgs } from "./tools/get-copilot-usage-all-orgs.js";
-
-// package.json sits one level above both src/ and dist/, so this resolves to the package root in either layout.
-const { version } = JSON.parse(
-    readFileSync(new URL("../package.json", import.meta.url), "utf8")
-) as { version: string };
+import { version } from "./version.js";
 
 function createServer(): McpServer {
     const server = new McpServer(

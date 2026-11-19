@@ -31,9 +31,9 @@ export interface CopilotSeatDetail {
     };
     assigning_team: { name: string; id: number } | null;
     created_at: string;
-    updated_at: string;
     last_activity_at: string | null;
     last_activity_editor: string | null;
+    last_authenticated_at: string | null;
     pending_cancellation_date: string | null;
     plan_type: string;
 }

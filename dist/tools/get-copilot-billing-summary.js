@@ -14,10 +14,10 @@ export function registerGetCopilotBillingSummary(server) {
         inputSchema: z.strictObject({
             org: orgLogin.describe("GitHub organization login (slug), e.g. 'my-company'"),
         }),
-    }, async ({ org }) => {
+    }, async ({ org }, ctx) => {
         try {
             const token = getToken();
-            const billing = await githubFetch(`/orgs/${encodeURIComponent(org)}/copilot/billing`, token);
+            const billing = await githubFetch(`/orgs/${encodeURIComponent(org)}/copilot/billing`, token, ctx.mcpReq.signal);
             const sb = billing.seat_breakdown;
             const summary = [
                 `## Copilot Billing Summary for **${org}**\n`,

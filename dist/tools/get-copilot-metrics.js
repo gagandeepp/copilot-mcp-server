@@ -24,7 +24,7 @@ export function registerGetCopilotMetrics(server) {
                 .optional()
                 .describe("End date in YYYY-MM-DD format (defaults to yesterday)"),
         }),
-    }, async ({ org, since, until }) => {
+    }, async ({ org, since, until }, ctx) => {
         try {
             const token = getToken();
             const params = new URLSearchParams({ per_page: "28" });
@@ -33,7 +33,7 @@ export function registerGetCopilotMetrics(server) {
             if (until)
                 params.set("until", until);
             const path = `/orgs/${encodeURIComponent(org)}/copilot/metrics?${params}`;
-            const metrics = await githubFetch(path, token);
+            const metrics = await githubFetch(path, token, ctx.mcpReq.signal);
             if (!metrics || metrics.length === 0) {
                 return {
                     content: [

@@ -9,10 +9,10 @@ export function registerListOrganizations(server) {
             idempotentHint: true,
             openWorldHint: true,
         },
-    }, async () => {
+    }, async (ctx) => {
         try {
             const token = getToken();
-            const orgs = await githubFetchAll("/user/orgs?per_page=100", token);
+            const orgs = await githubFetchAll("/user/orgs?per_page=100", token, ctx.mcpReq.signal);
             if (orgs.length === 0) {
                 return {
                     content: [

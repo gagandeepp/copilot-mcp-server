@@ -45,7 +45,8 @@ Tools:
 
 ### Shared Modules
 
-- `github-client.ts` — `getToken()` (reads `GITHUB_TOKEN` env var), `githubFetch<T>()` (single request), `githubFetchAll<T>()` (handles pagination via Link headers). All requests use GitHub API v2022-11-28 with Bearer auth.
+- `github-client.ts` — `getToken()` (reads `GITHUB_TOKEN` env var), `githubFetch<T>()` (single request), `githubFetchAll<T>()` (handles pagination via Link headers); both take an optional `AbortSignal` and share one internal `request()` helper. Requests send `Accept: application/vnd.github+json`, API version 2022-11-28 and a `copilot-mcp-server/<version>` User-Agent, with a 30 s timeout combined with the caller's signal. The Bearer token is sent only to `https://api.github.com`, never to other origins. Failures throw `ApiError` (`status`, `rateLimited`) with a recovery-oriented message that never includes the raw response body.
+- `version.ts` — Exports `version`, read once from `package.json`; used for the server info and the User-Agent.
 - `schemas.ts` — Shared Zod schemas (`orgLogin`: validated GitHub org login, reused by the org-scoped tools, each adding its own `.describe()`).
 - `types.ts` — TypeScript interfaces for GitHub API responses (`GitHubOrg`, `CopilotBilling`, `CopilotSeatDetail`, `CopilotSeatsResponse`, `CopilotMetricDay`).
 

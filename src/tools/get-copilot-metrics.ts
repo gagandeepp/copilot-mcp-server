@@ -30,7 +30,7 @@ export function registerGetCopilotMetrics(server: McpServer): void {
                     .describe("End date in YYYY-MM-DD format (defaults to yesterday)"),
             }),
         },
-        async ({ org, since, until }) => {
+        async ({ org, since, until }, ctx) => {
             try {
                 const token = getToken();
 
@@ -39,7 +39,7 @@ export function registerGetCopilotMetrics(server: McpServer): void {
                 if (until) params.set("until", until);
                 const path = `/orgs/${encodeURIComponent(org)}/copilot/metrics?${params}`;
 
-                const metrics = await githubFetch<CopilotMetricDay[]>(path, token);
+                const metrics = await githubFetch<CopilotMetricDay[]>(path, token, ctx.mcpReq.signal);
 
                 if (!metrics || metrics.length === 0) {
                     return {

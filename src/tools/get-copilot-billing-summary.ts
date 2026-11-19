@@ -20,12 +20,13 @@ export function registerGetCopilotBillingSummary(server: McpServer): void {
                 org: orgLogin.describe("GitHub organization login (slug), e.g. 'my-company'"),
             }),
         },
-        async ({ org }) => {
+        async ({ org }, ctx) => {
             try {
                 const token = getToken();
                 const billing = await githubFetch<CopilotBilling>(
                     `/orgs/${encodeURIComponent(org)}/copilot/billing`,
-                    token
+                    token,
+                    ctx.mcpReq.signal
                 );
 
                 const sb = billing.seat_breakdown;

@@ -18,12 +18,19 @@ export function registerGetCopilotSeats(server) {
                 .int()
                 .min(1)
                 .default(1)
-                .describe("Page number (50 seats per page)"),
+                .describe("Page number, starting at 1"),
+            per_page: z
+                .number()
+                .int()
+                .min(1)
+                .max(100)
+                .default(50)
+                .describe("Seats per page (1-100, default 50)"),
         }),
-    }, async ({ org, page }) => {
+    }, async ({ org, page, per_page }, ctx) => {
         try {
             const token = getToken();
-            const data = await githubFetch(`/orgs/${encodeURIComponent(org)}/copilot/billing/seats?per_page=50&page=${page}`, token);
+            const data = await githubFetch(`/orgs/${encodeURIComponent(org)}/copilot/billing/seats?per_page=${per_page}&page=${page}`, token, ctx.mcpReq.signal);
             if (!data.seats || data.seats.length === 0) {
                 return {
                     content: [
@@ -35,8 +42,8 @@ export function registerGetCopilotSeats(server) {
                 };
             }
             const header = `## Copilot Seats for **${org}** (Page ${page}, Total: ${data.total_seats})\n`;
-            const tableHeader = `| User | Type | Team | Plan | Last Active | Last Editor | Pending Cancel |\n` +
-                `|------|------|------|------|-------------|-------------|----------------|\n`;
+            const tableHeader = `| User | Type | Team | Plan | Last Active | Last Auth | Last Editor | Pending Cancel |\n` +
+                `|------|------|------|------|-------------|-----------|-------------|----------------|\n`;
             const rows = data.seats
                 .map((s) => {
                 return (`| ${s.assignee.login} ` +
@@ -44,12 +51,13 @@ export function registerGetCopilotSeats(server) {
                     `| ${s.assigning_team?.name || "—"} ` +
                     `| ${s.plan_type} ` +
                     `| ${s.last_activity_at || "Never"} ` +
+                    `| ${s.last_authenticated_at || "—"} ` +
                     `| ${s.last_activity_editor || "—"} ` +
                     `| ${s.pending_cancellation_date || "—"} |`);
             })
                 .join("\n");
-            const pagination = data.total_seats > page * 50
-                ? `\n\n_More seats available. Use page=${page + 1} to see next batch._`
+            const pagination = data.total_seats > page * per_page
+                ? `\n\n_More seats available. Use page=${page + 1} (per_page=${per_page}) to see the next batch._`
                 : "";
             return {
                 content: [
