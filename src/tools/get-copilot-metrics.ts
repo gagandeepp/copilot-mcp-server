@@ -1,21 +1,31 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { getToken, githubFetch } from "../github-client.js";
+import { orgLogin } from "../schemas.js";
 import type { CopilotMetricDay } from "../types.js";
 
 export function registerGetCopilotMetrics(server: McpServer): void {
     server.registerTool(
         "get_copilot_metrics",
         {
+            title: "Copilot Usage Metrics",
             description: "Get aggregated Copilot usage metrics for an organization over recent days, including code completions, chat usage, and active/engaged user counts broken down by editor and model.",
+            annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            },
             inputSchema: z.strictObject({
-                org: z.string().describe("GitHub organization login (slug)"),
+                org: orgLogin.describe("GitHub organization login (slug)"),
                 since: z
                     .string()
+                    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
                     .optional()
                     .describe("Start date in YYYY-MM-DD format (defaults to 28 days ago)"),
                 until: z
                     .string()
+                    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
                     .optional()
                     .describe("End date in YYYY-MM-DD format (defaults to yesterday)"),
             }),
@@ -24,9 +34,10 @@ export function registerGetCopilotMetrics(server: McpServer): void {
             try {
                 const token = getToken();
 
-                let path = `/orgs/${encodeURIComponent(org)}/copilot/metrics?per_page=28`;
-                if (since) path += `&since=${since}`;
-                if (until) path += `&until=${until}`;
+                const params = new URLSearchParams({ per_page: "28" });
+                if (since) params.set("since", since);
+                if (until) params.set("until", until);
+                const path = `/orgs/${encodeURIComponent(org)}/copilot/metrics?${params}`;
 
                 const metrics = await githubFetch<CopilotMetricDay[]>(path, token);
 

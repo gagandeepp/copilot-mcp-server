@@ -34,6 +34,8 @@ export function registerToolName(server: McpServer): void {
 }
 ```
 
+Every tool declares a `title` and read-only `annotations` (`readOnlyHint`, `idempotentHint`, `openWorldHint: true`, `destructiveHint: false`).
+
 Tools:
 - `list-organizations.ts` — Lists all accessible GitHub orgs
 - `get-copilot-billing-summary.ts` — Billing/seat breakdown for an org
@@ -44,6 +46,7 @@ Tools:
 ### Shared Modules
 
 - `github-client.ts` — `getToken()` (reads `GITHUB_TOKEN` env var), `githubFetch<T>()` (single request), `githubFetchAll<T>()` (handles pagination via Link headers). All requests use GitHub API v2022-11-28 with Bearer auth.
+- `schemas.ts` — Shared Zod schemas (`orgLogin`: validated GitHub org login, reused by the org-scoped tools, each adding its own `.describe()`).
 - `types.ts` — TypeScript interfaces for GitHub API responses (`GitHubOrg`, `CopilotBilling`, `CopilotSeatDetail`, `CopilotSeatsResponse`, `CopilotMetricDay`).
 
 ### Patterns
@@ -51,7 +54,7 @@ Tools:
 - **Parameter validation**: Zod schemas with `.describe()` for MCP tool schema generation
 - **Error handling**: try/catch in every handler returning `{ content: [...], isError: true }`
 - **Response format**: All tools return Markdown text (tables, summaries)
-- **No circular dependencies**: Tools depend on `github-client.ts` and `types.ts`; nothing depends on tools except `index.ts`
+- **No circular dependencies**: Tools depend on `github-client.ts`, `schemas.ts` and `types.ts`; nothing depends on tools except `index.ts`
 
 ## Environment
 

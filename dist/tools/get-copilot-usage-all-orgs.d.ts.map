@@ -1,1 +1,1 @@
-{"version":3,"file":"get-copilot-usage-all-orgs.d.ts","sourceRoot":"","sources":["../../src/tools/get-copilot-usage-all-orgs.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,8BAA8B,CAAC;AAI9D,wBAAgB,8BAA8B,CAAC,MAAM,EAAE,SAAS,GAAG,IAAI,CAiHtE"}
+{"version":3,"file":"get-copilot-usage-all-orgs.d.ts","sourceRoot":"","sources":["../../src/tools/get-copilot-usage-all-orgs.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,8BAA8B,CAAC;AAI9D,wBAAgB,8BAA8B,CAAC,MAAM,EAAE,SAAS,GAAG,IAAI,CAwHtE"}

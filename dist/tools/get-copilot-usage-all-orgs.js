@@ -1,7 +1,14 @@
 import { ApiError, getToken, githubFetch, githubFetchAll } from "../github-client.js";
 export function registerGetCopilotUsageAllOrgs(server) {
     server.registerTool("get_copilot_usage_all_orgs", {
+        title: "Copilot Usage Across All Orgs",
         description: "Get a high-level Copilot usage summary across ALL organizations the authenticated user belongs to. Shows seat counts and active users per org in a single view.",
+        annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: true,
+        },
     }, async () => {
         try {
             const token = getToken();

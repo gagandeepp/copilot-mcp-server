@@ -1,1 +1,1 @@
-{"version":3,"file":"list-organizations.d.ts","sourceRoot":"","sources":["../../src/tools/list-organizations.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,8BAA8B,CAAC;AAI9D,wBAAgB,yBAAyB,CAAC,MAAM,EAAE,SAAS,GAAG,IAAI,CAoDjE"}
+{"version":3,"file":"list-organizations.d.ts","sourceRoot":"","sources":["../../src/tools/list-organizations.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,8BAA8B,CAAC;AAI9D,wBAAgB,yBAAyB,CAAC,MAAM,EAAE,SAAS,GAAG,IAAI,CA2DjE"}

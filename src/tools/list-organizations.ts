@@ -6,7 +6,14 @@ export function registerListOrganizations(server: McpServer): void {
     server.registerTool(
         "list_organizations",
         {
+            title: "List Organizations",
             description: "List all GitHub organizations the authenticated user belongs to, with their IDs. Use the org login (slug) for subsequent Copilot queries.",
+            annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            },
         },
         async () => {
             try {

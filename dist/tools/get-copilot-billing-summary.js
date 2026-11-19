@@ -1,10 +1,18 @@
 import * as z from "zod/v4";
 import { getToken, githubFetch } from "../github-client.js";
+import { orgLogin } from "../schemas.js";
 export function registerGetCopilotBillingSummary(server) {
     server.registerTool("get_copilot_billing_summary", {
+        title: "Copilot Billing Summary",
         description: "Get the Copilot billing summary for an organization, including total seats, active/inactive breakdown, plan type, and feature enablement status.",
+        annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: true,
+        },
         inputSchema: z.strictObject({
-            org: z.string().describe("GitHub organization login (slug), e.g. 'my-company'"),
+            org: orgLogin.describe("GitHub organization login (slug), e.g. 'my-company'"),
         }),
     }, async ({ org }) => {
         try {

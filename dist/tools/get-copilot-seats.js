@@ -1,13 +1,22 @@
 import * as z from "zod/v4";
 import { getToken, githubFetch } from "../github-client.js";
+import { orgLogin } from "../schemas.js";
 export function registerGetCopilotSeats(server) {
     server.registerTool("get_copilot_seats", {
+        title: "Copilot Seat Assignments",
         description: "List all Copilot seat assignments for an organization with per-user details including last activity date, editor used, team, and plan type.",
+        annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: true,
+        },
         inputSchema: z.strictObject({
-            org: z.string().describe("GitHub organization login (slug)"),
+            org: orgLogin.describe("GitHub organization login (slug)"),
             page: z
                 .number()
-                .optional()
+                .int()
+                .min(1)
                 .default(1)
                 .describe("Page number (50 seats per page)"),
         }),
