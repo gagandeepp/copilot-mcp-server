@@ -1,8 +1,9 @@
 import * as z from "zod/v4";
 import { fetchBilling, renderBillingMarkdown } from "../data/billing.js";
 import { getToken } from "../github-client.js";
+import { billingRef } from "../resource-uris.js";
 import { orgLogin, responseFormat } from "../schemas.js";
-import { errorResult, formatResult } from "./result.js";
+import { errorResult, formatResult, withResourceLink } from "./result.js";
 export function registerGetCopilotBillingSummary(server) {
     server.registerTool("get_copilot_billing_summary", {
         title: "Copilot Billing Summary",
@@ -20,7 +21,7 @@ export function registerGetCopilotBillingSummary(server) {
     }, async ({ org, response_format }, ctx) => {
         try {
             const data = await fetchBilling(org, getToken(), ctx.mcpReq.signal);
-            return formatResult(data, response_format, renderBillingMarkdown);
+            return withResourceLink(formatResult(data, response_format, renderBillingMarkdown), billingRef(org));
         }
         catch (err) {
             return errorResult(err.message);

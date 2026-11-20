@@ -1,4 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
+import { JSON_MIME } from "../resource-uris.js";
+import type { ResourceRef } from "../resource-uris.js";
 import type { ResponseFormat } from "../schemas.js";
 
 /**
@@ -22,4 +24,12 @@ export function formatResult<T extends object>(
 /** An error result: plain text in both response formats. */
 export function errorResult(message: string): CallToolResult {
     return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
+}
+
+/**
+ * Add a `resource_link` block after the result's existing content, pointing at the resource that serves the same data
+ * (the first block, and `structuredContent`, stay exactly as they were). Only for successful results.
+ */
+export function withResourceLink(result: CallToolResult, ref: ResourceRef): CallToolResult {
+    return { ...result, content: [...result.content, { type: "resource_link", uri: ref.uri, name: ref.name, mimeType: JSON_MIME }] };
 }

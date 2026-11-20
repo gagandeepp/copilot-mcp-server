@@ -32,7 +32,7 @@ export const ERAS = [
  *
  * @param {object} [opts]
  * @param {object} [opts.options]        Client options (see ERAS).
- * @param {string} [opts.scenario]       Mock scenario for /user/orgs (basic, classify, clean, escaping, none).
+ * @param {string} [opts.scenario]       Mock scenario for /user/orgs (basic, classify, clean, escaping, none, many, mixedcase).
  * @param {string | null} [opts.token]   GITHUB_TOKEN for the server; null leaves it unset.
  * @param {number} [opts.mockTimeoutMs]  Shrink the 30 s request timeout inside the server process.
  * @param {string} [opts.entry]          Server entry file.

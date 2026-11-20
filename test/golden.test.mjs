@@ -10,6 +10,8 @@ import { ERAS, FIXTURES, startServer } from "./helpers/harness.mjs";
 import { GOLDEN_CASES } from "./helpers/golden-cases.mjs";
 
 const scenarios = [...new Set(GOLDEN_CASES.map((c) => c.scenario))];
+// A successful billing or metrics result has a second block, a resource_link; the first block is the pinned Markdown.
+const LINKED_TOOLS = new Set(["get_copilot_billing_summary", "get_copilot_metrics"]);
 
 for (const { label, options } of ERAS) {
     describe(`golden Markdown [${label}]`, () => {
@@ -28,7 +30,8 @@ for (const { label, options } of ERAS) {
                 for (const args of [c.args, { ...c.args, response_format: "markdown" }]) {
                     const { result, text } = await servers.get(c.scenario).call(c.tool, args);
                     assert.equal(Boolean(result.isError), Boolean(c.isError), text);
-                    assert.equal(result.content.length, 1);
+                    assert.equal(result.content.length, LINKED_TOOLS.has(c.tool) && !c.isError ? 2 : 1);
+                    if (result.content.length === 2) assert.equal(result.content[1].type, "resource_link");
                     assert.equal(result.structuredContent, undefined, "Markdown mode returns no structuredContent");
                     assert.equal(text, golden);
                 }

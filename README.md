@@ -27,7 +27,7 @@ npm start
 
 ## MCP Tools
 
-This server exposes 5 tools. Every tool takes an optional `response_format` (`"markdown"` by default, or `"json"`); see [Response formats](#response-formats).
+This server exposes 5 tools, plus [resources](#resources) and [prompts](#prompts) for the same data. Every tool takes an optional `response_format` (`"markdown"` by default, or `"json"`); see [Response formats](#response-formats).
 
 ### `list_organizations`
 Lists all GitHub organizations the authenticated user belongs to, with IDs. Use the org `login` value for all subsequent queries.
@@ -68,6 +68,8 @@ Every tool accepts `response_format`:
 - `"json"`: the data as an object, returned both as `structuredContent` and as pretty-printed JSON in the text content (for clients that only read text). Strings are raw (not Markdown-escaped).
 
 Errors are a plain `isError` text result in both formats. The tools declare no `outputSchema`, because the output shape depends on `response_format`.
+
+A successful `get_copilot_billing_summary` or `get_copilot_metrics` result has a second content block after the text: a `resource_link` (`mimeType: "application/json"`) to the [resource](#resources) that serves the same data (`copilot://orgs/{org}/billing`, `.../metrics/28-day`, or `.../metrics/daily/{day}` when `day` was given). The first block and `structuredContent` are unchanged.
 
 The JSON shapes are stable: keys are snake_case, and a value that is missing is `null` rather than absent, except where noted.
 
@@ -193,6 +195,36 @@ When GitHub has no report to give (HTTP 204, or a report with no download links)
 
 `organizations` lists the successes first, then the skipped orgs (no Copilot subscription, no access or insufficient permissions), then the failed ones (rate limit, server or network error), each group in the order GitHub listed the orgs; this is the same order as the Markdown rows. `totals` cover only the `ok` orgs, and `incomplete` is `true` when at least one org failed. Progress notifications are sent as before while the orgs are scanned.
 
+## Resources
+
+The same data is also readable as MCP resources, for clients that attach resources as context instead of calling tools. Every resource has `mimeType: "application/json"`, and its content is the pretty-printed JSON of exactly the object the matching tool returns in `response_format: "json"` (shapes above).
+
+| URI | Returns | Cache hint (2026-07-28 clients) |
+|-----|---------|------------------|
+| `copilot://orgs` | the organizations the token can see (`list_organizations`) | 1 hour, private |
+| `copilot://orgs/{org}/billing` | the billing summary of one org (`get_copilot_billing_summary`) | 10 minutes, private |
+| `copilot://orgs/{org}/metrics/28-day` | the latest 28-day metrics summary (`get_copilot_metrics`) | 1 hour, private |
+| `copilot://orgs/{org}/metrics/daily/{day}` | the metrics summary of one UTC day, `{day}` as `YYYY-MM-DD` (`get_copilot_metrics` with `day`) | 24 hours, private |
+
+- `resources/list` lists `copilot://orgs` plus one billing and one 28-day entry per organization the token can see (titled `Copilot billing: <org>` and `Copilot 28-day metrics: <org>`). Daily URIs are not listed (one per org and day is unbounded); build them yourself. If GitHub cannot be reached (no token, API error) the per-org entries are left out and `copilot://orgs` is still listed. `resources/templates/list` shows the three templates.
+- The `{org}` variable of every template supports completion (`completion/complete`): the org logins starting with what you typed, case-insensitive, at most 100. The org list is fetched once and cached in memory for 5 minutes, and shared with `resources/list`. If it cannot be fetched, completion returns an empty list instead of an error.
+- No report is not an error: a 204 or a report without download links reads as JSON with `available: false` and a `message`, like the tool.
+- Errors have no `isError` channel on resources, so they are JSON-RPC errors with the tool's recovery-oriented message. A GitHub 404 (unknown org, or the metrics policy is off) is "resource not found": code `-32602` with `data: { uri }` (the SDK's `ResourceNotFoundError`, on both protocol eras). A malformed `{org}` or `{day}` (not a GitHub login, not a real `YYYY-MM-DD` date) is a plain `-32602` without that data. Anything else (no token, 401, 403, 429, 5xx, timeout) is `-32603` with the message, for example `GitHub denied access (HTTP 403). ...`.
+- Caching: clients speaking the 2026-07-28 revision get `ttlMs` and `cacheScope` on the lists and reads (see the table; all reads are `private` because they depend on the token). `resources/list` is cached for 5 minutes (private), `resources/templates/list` for an hour (public). 2025-era clients get no cache fields.
+
+## Prompts
+
+Four prompts package common reviews. Prompt arguments are strings; the model then calls the tools or reads the embedded data. Where the data exists as a resource, the prompt embeds it as `resource` content blocks (`mimeType: "application/json"`, the same text as `resources/read`), followed by a final message with the instructions. If GitHub cannot provide an embedded resource (no token, 403, 404, ...), that block becomes a short text note saying so and naming the tool to call instead, so `prompts/get` never fails because of GitHub. Invalid arguments are rejected with `-32602`; unknown arguments too.
+
+| Prompt | Arguments | What it asks the model to do |
+|--------|-----------|------------------------------|
+| `copilot_inactive_seats_review` | `org` (completable); `inactive_days` (digits, default `30`) | Page through `get_copilot_seats` (`response_format: "json"`, `per_page: 100`) until `has_more` is false, list the seats whose `last_activity_at` is null or older than `inactive_days` plus the pending cancellations, group them by team, estimate the monthly savings (stating the per-seat list price it assumes for each `plan_type`), and output a removal-candidate table. Nothing is embedded: seats are only available as a tool. |
+| `copilot_adoption_report` | `org` (completable) | Embeds `copilot://orgs/{org}/billing` and `copilot://orgs/{org}/metrics/28-day`. Report the adoption rate (active seats / total seats), engaged and active users, completions vs chat, the top IDEs, languages and models, and three concrete recommendations. |
+| `copilot_org_comparison` | `min_active_pct` (0-100, default `50`) | Call `get_copilot_usage_all_orgs` (`response_format: "json"`), rank the organizations by utilization (active / total seats), flag those below the threshold, list skipped and failed orgs separately and say when the totals are incomplete. |
+| `copilot_billing_forecast` | `org` (completable) | Embeds `copilot://orgs/{org}/billing`. Explain the seats added this cycle, the pending invitations and cancellations, and the expected seat count next cycle with its reasoning. |
+
+The `org` argument completes from the same cached org list as the resource templates. `prompts/list` is cacheable for an hour (public) on 2026-07-28 clients. The inactive-seats prompt includes today's date and the cutoff date in its instructions, since the model cannot be assumed to know the date.
+
 ## Breaking changes in 2.0.0
 
 - Node.js 20.3 or later is required.
@@ -262,7 +294,7 @@ npm run smoke    # live smoke test against the real GitHub API (needs GITHUB_TOK
 
 `npm test` uses Node's built-in test runner (Node 20.3+) against the built server in `dist/`. The tests start the server with a fake `GITHUB_TOKEN` and a preloaded `fetch` mock, connect a real MCP client in both protocol eras (2026-07-28 and 2025-11-25), and check, among other things, that the Markdown output of every tool matches the golden files in `test/fixtures/golden/` and that `response_format: "json"` matches the documented shapes.
 
-`npm run smoke` starts the built server and calls it for real: it checks that 5 tools are listed, that `list_organizations` works, prints the outcome of billing, seats and metrics for your first organization (HTTP 403/404 are reported, not failures, since your token may not be an organization owner), and checks that invalid input is rejected. It needs `GITHUB_TOKEN` in the environment or in `.env`, and exits non-zero only on a real failure.
+`npm run smoke` starts the built server and calls it for real: it checks that 5 tools are listed, that `list_organizations` works, prints the outcome of billing, seats and metrics for your first organization (HTTP 403/404 are reported, not failures, since your token may not be an organization owner), and checks that invalid input is rejected. It then checks the [resources](#resources) (the lists and templates, that reads match the tools' JSON, that an unknown org is "resource not found", and the cache hints) and the [prompts](#prompts) (4 listed, an embedded resource in `copilot_adoption_report`, `org` completion), again reporting rather than failing on HTTP 403/404. It needs `GITHUB_TOKEN` in the environment or in `.env`, and exits non-zero only on a real failure.
 
 `dist/` is committed (installing from a git URL relies on it), so run `npm run build` and commit the result with your source changes.
 

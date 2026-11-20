@@ -2,7 +2,8 @@
 // signed-download host. No network is ever used.
 //
 // Environment:
-//   MOCK_SCENARIO    which organizations /user/orgs returns: basic (default), classify, clean, escaping, none
+//   MOCK_SCENARIO    which organizations /user/orgs returns: basic (default), classify, clean, escaping, none, many, mixedcase, flaky
+//                    (flaky: the first /user/orgs request fails with HTTP 500, later ones serve the basic list)
 //   MOCK_STATS       file the mock writes its request log and counters to (the test reads it back)
 //   MOCK_TIMEOUT_MS  shrink the client's 30 s request timeout to this many ms (only for the timeout test)
 //
@@ -46,6 +47,9 @@ const ORGS = {
     // User-controlled strings with table-breaking characters.
     escaping: [org(10, "pipe-org", "Has a | pipe\nand a newline"), org(11, "plain-org", "Plain description")],
     none: [],
+    // Phase 7 completion: more than the 100 suggestions a completion may return, and logins that differ in case.
+    many: Array.from({ length: 120 }, (_, i) => org(100 + i, `org-${String(i + 1).padStart(3, "0")}`)),
+    mixedcase: [org(1, "Acme-Corp"), org(2, "acme-labs"), org(3, "Beta")],
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -82,8 +86,10 @@ async function billingResponse(login, signal) {
         if (login === "globex") return json(200, { ...billing(8, 3), plan_type: "enterprise", seat_management_setting: "assign_all", public_code_suggestions: "allow", cli: "disabled" });
         if (login === "pipe-org") return json(200, { ...billing(4, 1), plan_type: "bus|iness" });
         if (login === "plain-org") return json(200, billing(2, 2));
+        // Succeeds on both billing and the 28-day metrics (the Phase 7 prompts embed both).
+        if (login === "both") return json(200, billing(20, 15, { added_this_cycle: 4, pending_cancellation: 1, pending_invitation: 2 }));
         if (login === "nocop" || login === "initech") return json(404, { message: "Not Found" });
-        if (login === "owner") return json(403, { message: "Must be an org owner" });
+        if (login === "owner" || login === "forbidden") return json(403, { message: "Must be an org owner" });
         if (login === "rl403") {
             return json(403, { message: "API rate limit exceeded" }, { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1795000000" });
         }
@@ -156,6 +162,7 @@ const DL = "https://copilot-reports.github.com";
 // org -> which download links the reports API hands out (same for the 28-day and the 1-day endpoint)
 const LINKS = {
     ok: [`${DL}/org-28-day.ndjson`],
+    both: [`${DL}/org-28-day.ndjson`],
     oneday: [`${DL}/org-1-day.ndjson`],
     multi: [`${DL}/org-28-day.ndjson`, `${DL}/org-28-day-pretty-array.json`],
     nullengage: [`${DL}/org-28-day-null-engagement.ndjson`],
@@ -229,7 +236,7 @@ function download(url) {
 function metricsResponse(login, kind, url) {
     const day = url.searchParams.get("day");
     if (kind === "organization-1-day" && !day) return json(422, { message: "Invalid request." });
-    if (login === "denied") {
+    if (login === "denied" || login === "forbidden") {
         return json(403, {
             message: "Insufficient permissions. This action requires admin, or relevant organization role access.",
             documentation_url: "https://docs.github.com/rest/copilot/copilot-usage-metrics",
@@ -271,7 +278,11 @@ globalThis.fetch = async (input, init = {}) => {
     }
     if (url.host !== "api.github.com") return json(404, { message: "Not Found" });
 
-    if (url.pathname === "/user/orgs") return json(200, ORGS[process.env.MOCK_SCENARIO ?? "basic"] ?? []);
+    if (url.pathname === "/user/orgs") {
+        const scenario = process.env.MOCK_SCENARIO ?? "basic";
+        if (scenario === "flaky") return stats.requests.filter((r) => r.path === "/user/orgs").length === 1 ? json(500, { message: "Server Error" }) : json(200, ORGS.basic);
+        return json(200, ORGS[scenario] ?? []);
+    }
 
     const metrics = url.pathname.match(/^\/orgs\/([^/]+)\/copilot\/metrics\/reports\/(organization-28-day\/latest|organization-1-day)$/);
     if (metrics) return metricsResponse(metrics[1], metrics[2], url);

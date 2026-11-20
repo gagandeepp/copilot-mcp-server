@@ -2,8 +2,9 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { EmptyReportError, fetchMetrics, metricsErrorMessage, renderMetricsMarkdown } from "../data/metrics.js";
 import { getToken } from "../github-client.js";
+import { metrics28DayRef, metricsDailyRef } from "../resource-uris.js";
 import { orgLogin, responseFormat } from "../schemas.js";
-import { errorResult, formatResult } from "./result.js";
+import { errorResult, formatResult, withResourceLink } from "./result.js";
 
 export function registerGetCopilotMetrics(server: McpServer): void {
     server.registerTool(
@@ -30,7 +31,10 @@ export function registerGetCopilotMetrics(server: McpServer): void {
         async ({ org, day, response_format }, ctx) => {
             try {
                 const data = await fetchMetrics(org, day, getToken(), ctx.mcpReq.signal);
-                return formatResult(data, response_format, renderMetricsMarkdown);
+                return withResourceLink(
+                    formatResult(data, response_format, renderMetricsMarkdown),
+                    day ? metricsDailyRef(org, day) : metrics28DayRef(org)
+                );
             } catch (err: unknown) {
                 // An empty report is an error whose message needs no "Error: " prefix (unchanged behaviour).
                 if (err instanceof EmptyReportError) {

@@ -111,12 +111,16 @@ const usageShape = z.strictObject({
 });
 
 // ---- helpers -------------------------------------------------------------------------------------------------
+// Successful billing and metrics results carry a second block, a resource_link to the matching resource (resources.test.mjs checks it).
+const LINKED_TOOLS = new Set(["get_copilot_billing_summary", "get_copilot_metrics"]);
+
 /** Call a tool in JSON mode, check the invariants every JSON result shares, and return the data. */
 async function callJson(server, tool, args, shape) {
     const { result, text } = await server.call(tool, { ...args, response_format: "json" });
     assert.ok(!result.isError, text);
-    assert.equal(result.content.length, 1);
+    assert.equal(result.content.length, LINKED_TOOLS.has(tool) ? 2 : 1);
     assert.equal(result.content[0].type, "text");
+    if (LINKED_TOOLS.has(tool)) assert.equal(result.content[1].type, "resource_link");
     assert.ok(result.structuredContent && typeof result.structuredContent === "object" && !Array.isArray(result.structuredContent));
     assert.deepEqual(JSON.parse(text), result.structuredContent, "the text block is the same data as structuredContent");
     assert.equal(text, JSON.stringify(result.structuredContent, null, 2), "the text block is pretty-printed JSON");
