@@ -240,9 +240,9 @@ To use it manually or in another project, create a `.vscode/mcp.json` file:
 ```json
 {
   "servers": {
-    "xxxx-copilot-mcp-server": {
+    "copilot-mcp-server": {
       "command": "npx",
-      "args": ["-y", "@xxxx-devops-qa/copilot-mcp-server"],
+      "args": ["-y", "@gagandeepp/copilot-mcp-server"],
       "env": {
         "GITHUB_TOKEN": "${input:github-token}"
       }
@@ -266,9 +266,9 @@ Add the following to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "xxxx-copilot-mcp-server": {
+    "copilot-mcp-server": {
       "command": "npx",
-      "args": ["-y", "@xxxx-devops-qa/copilot-mcp-server"],
+      "args": ["-y", "@gagandeepp/copilot-mcp-server"],
       "env": {
         "GITHUB_TOKEN": "ghp_your_token_here"
       }
@@ -300,59 +300,41 @@ npm run smoke    # live smoke test against the real GitHub API (needs GITHUB_TOK
 
 ## Publishing
 
-### Publish to GitHub Packages
+The package is published to GitHub Packages as `@gagandeepp/copilot-mcp-server` (`publishConfig` in `package.json`).
 
-1. Scope the package to your org in `package.json`:
+### Installing from GitHub Packages
 
-```json
-"name": "@Xxxx-Devops-QA/copilot-mcp-server"
+GitHub Packages needs a token even to install a public package. Once per machine, add the scope and a token to `~/.npmrc`:
+
+```ini
+@gagandeepp:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=<a GitHub token with the read:packages scope>
 ```
 
-2. Add a `publishConfig` and `prepublishOnly` script:
-
-```json
-"publishConfig": {
-  "registry": "https://npm.pkg.github.com"
-},
-"scripts": {
-  "prepublishOnly": "npm run build"
-}
-```
-
-3. Authenticate and publish:
+Then run the server without cloning the repo, or use the VS Code and Claude Desktop configurations above:
 
 ```bash
-npm login --registry=https://npm.pkg.github.com
-npm publish
+npx -y @gagandeepp/copilot-mcp-server
 ```
 
 ### Install from Git
 
-Users can install directly from the repo without a registry:
+Without a registry or a packages token, install straight from the repo (`dist/` is committed for this):
 
 ```bash
-npm install -g git+https://github.com/your-org/copilot-mcp-server.git
+npm install -g git+https://github.com/gagandeepp/copilot-mcp-server.git
 ```
 
-### Usage After Publishing
+### Releasing a new version
 
-Users can run the server without cloning the repo:
+1. Bump the version (`npm version patch|minor|major --no-git-tag-version`), run `npm test`, and commit the result including `dist/`.
+2. Publish with a token that has the `write:packages` scope (`prepublishOnly` rebuilds `dist/` first):
 
 ```bash
-npx @Xxxx-Devops-QA/copilot-mcp-server
+npm publish --registry=https://npm.pkg.github.com
 ```
 
-Or reference it in their MCP client config:
-
-```json
-{
-  "command": "npx",
-  "args": ["-y", "@Xxxx-Devops-QA/copilot-mcp-server"],
-  "env": {
-    "GITHUB_TOKEN": "ghp_your_token_here"
-  }
-}
-```
+3. Tag the release (`git tag v<version> && git push origin v<version>`).
 
 ## License
 

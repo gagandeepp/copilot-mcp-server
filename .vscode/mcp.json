@@ -1,10 +1,10 @@
 {
     "servers": {
-        "xxxx-copilot-mcp-server": {
+        "copilot-mcp-server": {
             "command": "npx",
             "args": [
                 "-y",
-                "@xxxx-devops-qa/copilot-mcp-server"
+                "@gagandeepp/copilot-mcp-server"
             ],
             "env": {
                 "GITHUB_TOKEN": "${input:github-token}"

@@ -1,7 +1,11 @@
 {
-    "name": "@xxxx-devops-qa/copilot-mcp-server",
+    "name": "@gagandeepp/copilot-mcp-server",
     "version": "2.0.0",
     "description": "MCP server to query GitHub Copilot usage across organizations",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/gagandeepp/copilot-mcp-server.git"
+    },
     "type": "module",
     "main": "dist/index.js",
     "bin": {
