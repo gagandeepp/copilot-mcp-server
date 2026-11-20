@@ -1,0 +1,1 @@
+Error: GitHub denied access (HTTP 403). Copilot billing data requires an organization owner token with the manage_billing:copilot or read:org scope. GitHub says: "Must be an org owner"

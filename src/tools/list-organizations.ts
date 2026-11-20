@@ -1,57 +1,32 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getToken, githubFetchAll } from "../github-client.js";
-import type { GitHubOrg } from "../types.js";
+import type { McpServer } from "@modelcontextprotocol/server";
+import * as z from "zod/v4";
+import { fetchOrganizations, renderOrganizationsMarkdown } from "../data/organizations.js";
+import { getToken } from "../github-client.js";
+import { responseFormat } from "../schemas.js";
+import { errorResult, formatResult } from "./result.js";
 
 export function registerListOrganizations(server: McpServer): void {
     server.registerTool(
         "list_organizations",
         {
+            title: "List Organizations",
             description: "List all GitHub organizations the authenticated user belongs to, with their IDs. Use the org login (slug) for subsequent Copilot queries.",
-            inputSchema: {},
+            annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            },
+            inputSchema: z.strictObject({
+                response_format: responseFormat,
+            }),
         },
-        async () => {
+        async ({ response_format }, ctx) => {
             try {
-                const token = getToken();
-                const orgs = await githubFetchAll<GitHubOrg>("/user/orgs?per_page=100", token);
-
-                if (orgs.length === 0) {
-                    return {
-                        content: [
-                            {
-                                type: "text" as const,
-                                text: "No organizations found for the authenticated user.",
-                            },
-                        ],
-                    };
-                }
-
-                const table = orgs.map((o) => ({
-                    id: o.id,
-                    login: o.login,
-                    description: o.description || "",
-                }));
-
-                return {
-                    content: [
-                        {
-                            type: "text" as const,
-                            text:
-                                `Found ${orgs.length} organization(s):\n\n` +
-                                `| ID | Login (use this as org) | Description |\n` +
-                                `|----|------------------------|-------------|\n` +
-                                table
-                                    .map((r) => `| ${r.id} | ${r.login} | ${r.description} |`)
-                                    .join("\n"),
-                        },
-                    ],
-                };
+                const data = await fetchOrganizations(getToken(), ctx.mcpReq.signal);
+                return formatResult(data, response_format, renderOrganizationsMarkdown);
             } catch (err: unknown) {
-                return {
-                    content: [
-                        { type: "text" as const, text: `Error: ${(err as Error).message}` },
-                    ],
-                    isError: true,
-                };
+                return errorResult((err as Error).message);
             }
         }
     );

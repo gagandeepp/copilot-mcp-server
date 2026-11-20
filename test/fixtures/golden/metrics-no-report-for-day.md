@@ -1,0 +1,1 @@
+No Copilot usage metrics report exists for 2026-11-18 in org "nodata". Daily reports are available from 2025-10-10 and up to one year back, and a day's data can take up to two full UTC days after it ends to appear. Omit `day` to get the latest 28-day report.

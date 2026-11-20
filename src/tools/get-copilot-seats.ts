@@ -1,80 +1,46 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-import { getToken, githubFetch } from "../github-client.js";
-import type { CopilotSeatsResponse } from "../types.js";
+import type { McpServer } from "@modelcontextprotocol/server";
+import * as z from "zod/v4";
+import { fetchSeats, renderSeatsMarkdown } from "../data/seats.js";
+import { getToken } from "../github-client.js";
+import { orgLogin, responseFormat } from "../schemas.js";
+import { errorResult, formatResult } from "./result.js";
 
 export function registerGetCopilotSeats(server: McpServer): void {
     server.registerTool(
         "get_copilot_seats",
         {
+            title: "Copilot Seat Assignments",
             description: "List all Copilot seat assignments for an organization with per-user details including last activity date, editor used, team, and plan type.",
-            inputSchema: {
-                org: z.string().describe("GitHub organization login (slug)"),
+            annotations: {
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            },
+            inputSchema: z.strictObject({
+                org: orgLogin.describe("GitHub organization login (slug)"),
                 page: z
                     .number()
-                    .optional()
+                    .int()
+                    .min(1)
                     .default(1)
-                    .describe("Page number (50 seats per page)"),
-            },
+                    .describe("Page number, starting at 1"),
+                per_page: z
+                    .number()
+                    .int()
+                    .min(1)
+                    .max(100)
+                    .default(50)
+                    .describe("Seats per page (1-100, default 50)"),
+                response_format: responseFormat,
+            }),
         },
-        async ({ org, page }) => {
+        async ({ org, page, per_page, response_format }, ctx) => {
             try {
-                const token = getToken();
-                const data = await githubFetch<CopilotSeatsResponse>(
-                    `/orgs/${encodeURIComponent(org)}/copilot/billing/seats?per_page=50&page=${page}`,
-                    token
-                );
-
-                if (!data.seats || data.seats.length === 0) {
-                    return {
-                        content: [
-                            {
-                                type: "text" as const,
-                                text: `No Copilot seats found for org "${org}" (page ${page}).`,
-                            },
-                        ],
-                    };
-                }
-
-                const header = `## Copilot Seats for **${org}** (Page ${page}, Total: ${data.total_seats})\n`;
-                const tableHeader =
-                    `| User | Type | Team | Plan | Last Active | Last Editor | Pending Cancel |\n` +
-                    `|------|------|------|------|-------------|-------------|----------------|\n`;
-
-                const rows = data.seats
-                    .map((s) => {
-                        return (
-                            `| ${s.assignee.login} ` +
-                            `| ${s.assignee.type} ` +
-                            `| ${s.assigning_team?.name || "—"} ` +
-                            `| ${s.plan_type} ` +
-                            `| ${s.last_activity_at || "Never"} ` +
-                            `| ${s.last_activity_editor || "—"} ` +
-                            `| ${s.pending_cancellation_date || "—"} |`
-                        );
-                    })
-                    .join("\n");
-
-                const pagination =
-                    data.total_seats > page * 50
-                        ? `\n\n_More seats available. Use page=${page + 1} to see next batch._`
-                        : "";
-
-                return {
-                    content: [
-                        {
-                            type: "text" as const,
-                            text: header + tableHeader + rows + pagination,
-                        },
-                    ],
-                };
+                const data = await fetchSeats(org, page, per_page, getToken(), ctx.mcpReq.signal);
+                return formatResult(data, response_format, renderSeatsMarkdown);
             } catch (err: unknown) {
-                return {
-                    content: [
-                        { type: "text" as const, text: `Error: ${(err as Error).message}` },
-                    ],
-                    isError: true,
-                };
+                return errorResult((err as Error).message);
             }
         }
     );

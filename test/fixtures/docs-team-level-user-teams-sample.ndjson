@@ -1,0 +1,3 @@
+```json
+{"user_id": 1001, "user_login": "alice", "day": "2026-05-07", "organization_id": "999", "team_id": 42, "slug": "frontend"}
+{"user_id": 1001, "user_login": "alice", "day": "2026-05-07", "organization_id": "999", "team_id": 43, "slug": "backend"}

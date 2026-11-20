@@ -3,6 +3,7 @@
         "xxxx-copilot-mcp-server": {
             "command": "npx",
             "args": [
+                "-y",
                 "@xxxx-devops-qa/copilot-mcp-server"
             ],
             "env": {

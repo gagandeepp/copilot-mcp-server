@@ -1,0 +1,1 @@
+GitHub has no 28-day Copilot usage metrics report for org "nodata" yet. Try again later.

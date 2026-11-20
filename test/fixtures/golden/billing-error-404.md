@@ -1,0 +1,1 @@
+Error: Not found (HTTP 404). Check the org login with list_organizations; the org may not use Copilot, or the token cannot see it. GitHub says: "Not Found"

@@ -31,9 +31,9 @@ export interface CopilotSeatDetail {
     };
     assigning_team: { name: string; id: number } | null;
     created_at: string;
-    updated_at: string;
     last_activity_at: string | null;
     last_activity_editor: string | null;
+    last_authenticated_at: string | null;
     pending_cancellation_date: string | null;
     plan_type: string;
 }
@@ -41,48 +41,4 @@ export interface CopilotSeatDetail {
 export interface CopilotSeatsResponse {
     total_seats: number;
     seats: CopilotSeatDetail[];
-}
-
-export interface CopilotMetricDay {
-    date: string;
-    total_active_users: number;
-    total_engaged_users: number;
-    copilot_ide_code_completions?: {
-        total_engaged_users: number;
-        editors?: Array<{
-            name: string;
-            total_engaged_users: number;
-            models?: Array<{
-                name: string;
-                total_engaged_users: number;
-                total_code_acceptances: number;
-                total_code_suggestions: number;
-                total_code_lines_accepted: number;
-                total_code_lines_suggested: number;
-            }>;
-        }>;
-    };
-    copilot_ide_chat?: {
-        total_engaged_users: number;
-        editors?: Array<{
-            name: string;
-            total_engaged_users: number;
-            models?: Array<{
-                name: string;
-                total_engaged_users: number;
-                total_chats: number;
-            }>;
-        }>;
-    };
-    copilot_dotcom_chat?: {
-        total_engaged_users: number;
-        models?: Array<{
-            name: string;
-            total_engaged_users: number;
-            total_chats: number;
-        }>;
-    };
-    copilot_dotcom_pull_requests?: {
-        total_engaged_users: number;
-    };
 }

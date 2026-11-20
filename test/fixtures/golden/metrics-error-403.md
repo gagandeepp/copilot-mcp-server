@@ -1,0 +1,1 @@
+Error: Access denied (HTTP 403). Copilot usage metrics require an organization owner or the fine-grained "View Organization Copilot Metrics" permission (classic tokens need read:org). GitHub says: "Insufficient permissions. This action requires admin, or relevant organization role access."
