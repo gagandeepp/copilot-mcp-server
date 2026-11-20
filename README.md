@@ -233,9 +233,9 @@ The `org` argument completes from the same cached org list as the resource templ
 
 ## VSCode Configuration
 
-This repo includes a [`.vscode/mcp.json`](.vscode/mcp.json) file that automatically configures the MCP server for VSCode. When you open the project, VSCode will detect it and prompt you for your GitHub token.
+This repo includes a [`.vscode/mcp.json`](.vscode/mcp.json) file that runs the local build (`dist/index.js`, after `npm install`) for VSCode. When you open the project, VSCode will detect it and prompt you for your GitHub token.
 
-To use it manually or in another project, create a `.vscode/mcp.json` file:
+To use the published package in another project, create a `.vscode/mcp.json` file. This needs the `@gagandeepp` scope mapped to GitHub Packages in your `~/.npmrc` first (see [Installing from GitHub Packages](#installing-from-github-packages)): without that mapping, `npx` looks the name up on npmjs.org instead, where the `@gagandeepp` scope is not this project's, and would hand your `GITHUB_TOKEN` to whatever it finds there.
 
 ```json
 {
@@ -261,7 +261,7 @@ To use it manually or in another project, create a `.vscode/mcp.json` file:
 
 ## Claude Desktop Configuration
 
-Add the following to your `claude_desktop_config.json`:
+Map the `@gagandeepp` scope to GitHub Packages first, as for VSCode above, then add the following to your `claude_desktop_config.json`:
 
 ```json
 {

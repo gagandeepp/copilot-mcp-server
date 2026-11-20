@@ -1,10 +1,9 @@
 {
     "servers": {
         "copilot-mcp-server": {
-            "command": "npx",
+            "command": "node",
             "args": [
-                "-y",
-                "@gagandeepp/copilot-mcp-server"
+                "${workspaceFolder}/dist/index.js"
             ],
             "env": {
                 "GITHUB_TOKEN": "${input:github-token}"
